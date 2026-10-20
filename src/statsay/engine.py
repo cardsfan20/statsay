@@ -190,11 +190,13 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
             name: {value: terms.get(locale, ()) for value, terms in rule.vocabulary.items()}
             for name, rule in enums.items()
         }
-        for claim in extract_term_claims(loc.text, vocabularies, codes):
+        contrast = (config.contrast_cues or {}).get(locale, ((), ()))
+        for claim in extract_term_claims(loc.text, vocabularies, codes, contrast):
             claimed_fields[locale].update(claim.values)
             if claim.field:
                 claimed[locale].append((claim.field, claim.values[claim.field], claim.confidence))
-            if any(value in _term_set(entity.fields[name]) for name, value in claim.values.items()):
+            if any(enums[name].satisfied_by.get(value, {value}) & _term_set(entity.fields[name])
+                   for name, value in claim.values.items()):
                 continue
             term = loc.text[claim.span[0]:claim.span[1]]
             if claim.field:

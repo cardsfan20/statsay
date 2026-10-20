@@ -1,14 +1,22 @@
 {
   "5d320508149b28da05fc4d45e4a8f2d1c7547ef6": {
     "label": "Base of PR #77272: electric blanket says polyester, material is cotton (bug #53277)",
-    "required": [
-      { "rule": "enum_term_mismatch", "severity": "warning", "locale": "en", "key": "item.electric_blanket.description", "field": "material_family", "claimed": "nylon", "actual": ["cotton"] }
-    ],
-    "forbidden_keys": []
+    "statsay.yaml": {
+      "required": [
+        { "rule": "enum_term_mismatch", "severity": "warning", "locale": "en", "key": "item.electric_blanket.description", "field": "material_family", "claimed": "nylon", "actual": ["cotton"] }
+      ],
+      "forbidden_keys": []
+    },
+    "statsay-v2.yaml": {
+      "required": [
+        { "rule": "enum_term_mismatch", "severity": "warning", "locale": "en", "key": "item.electric_blanket.description", "field": "material", "claimed": "nylon", "actual": ["cotton"] }
+      ],
+      "forbidden_keys": []
+    }
   },
   "8f4168bad451f3311496888aaa975328cfede506": {
     "label": "Merge of PR #77272: material changed to nylon",
-    "required": [],
-    "forbidden_keys": ["item.electric_blanket.description"]
+    "statsay.yaml": { "required": [], "forbidden_keys": ["item.electric_blanket.description"] },
+    "statsay-v2.yaml": { "required": [], "forbidden_keys": ["item.electric_blanket.description"] }
   }
 }

@@ -84,6 +84,8 @@ class ClaimRule:
     vocabulary: dict[str, dict[str, tuple[str, ...]]] = None
     # enum only: a reviewed vocabulary may fail CI; an unreviewed one only warns
     validated: bool = False
+    # enum only: value key -> the data values that satisfy it (itself plus `aliases`)
+    satisfied_by: dict[str, frozenset[str]] = None
 
 
 def term_key(value) -> str:
@@ -102,6 +104,8 @@ class Config:
     explicits: tuple[ExplicitBinding, ...]
     claims: dict[str, ClaimRule]
     fields: dict[str, DerivedField]
+    # locale -> (cues before a term, cues after a term) that mark it as a comparison
+    contrast_cues: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = None
 
 
 def find_config(path: Path) -> Path:
@@ -180,13 +184,15 @@ def load_config(path: Path) -> Config:
         anchors = body.get("anchors") or {}
         if not isinstance(anchors, dict):
             raise StatsayError(f"claims.{field}: anchors must map locales to lists")
+        vocabulary, satisfied_by = _vocabulary(field, body) if kind == "enum" else (None, None)
         claims[field] = ClaimRule(
             field=field,
             kind=kind,
             unit=body.get("unit"),
             anchors={str(locale): tuple(str(term) for term in terms) for locale, terms in anchors.items()},
-            vocabulary=_vocabulary(field, body) if kind == "enum" else None,
+            vocabulary=vocabulary,
             validated=bool(body.get("validated", False)),
+            satisfied_by=satisfied_by,
         )
 
     fields = {}
@@ -206,6 +212,7 @@ def load_config(path: Path) -> Config:
         explicits=tuple(explicits),
         claims=claims,
         fields=fields,
+        contrast_cues=_contrast_cues(raw.get("contrast_cues")),
     )
 
 
@@ -295,13 +302,19 @@ def _vocabulary(field, body):
     raw = body.get("vocabulary")
     if not isinstance(raw, dict) or not raw:
         raise StatsayError(f"claims.{field}: kind enum needs a non-empty 'vocabulary' mapping")
-    vocabulary, seen = {}, {}
+    vocabulary, satisfied_by, seen = {}, {}, {}
     for value, by_locale in raw.items():
         if not isinstance(by_locale, dict):
             raise StatsayError(f"claims.{field}.vocabulary.{value}: expected a mapping of locales to lists")
         key = term_key(value)
         vocabulary[key] = {}
+        aliases = by_locale.get("aliases", [])
+        if not isinstance(aliases, list):
+            raise StatsayError(f"claims.{field}.vocabulary.{value}.aliases: expected a list of data values")
+        satisfied_by[key] = frozenset([key, *(term_key(alias) for alias in aliases)])
         for locale, terms in by_locale.items():
+            if locale == "aliases":
+                continue
             if not isinstance(terms, list):
                 raise StatsayError(f"claims.{field}.vocabulary.{value}.{locale}: expected a list of terms")
             for term in terms:
@@ -311,7 +324,27 @@ def _vocabulary(field, body):
                         f"claims.{field}: term '{term}' ({locale}) names both '{seen[folded]}' and '{key}'")
                 seen[folded] = key
             vocabulary[key][str(locale)] = tuple(str(term) for term in terms)
-    return vocabulary
+    return vocabulary, satisfied_by
+
+
+def _contrast_cues(raw):
+    """contrast_cues: {locale: {before: [...], after: [...]}}"""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise StatsayError("contrast_cues: expected a mapping of locales")
+    cues = {}
+    for locale, body in raw.items():
+        if not isinstance(body, dict) or set(body) - {"before", "after"}:
+            raise StatsayError(f"contrast_cues.{locale}: expected 'before' and/or 'after' lists")
+        sides = []
+        for side in ("before", "after"):
+            terms = body.get(side, [])
+            if not isinstance(terms, list):
+                raise StatsayError(f"contrast_cues.{locale}.{side}: expected a list")
+            sides.append(tuple(str(term) for term in terms))
+        cues[str(locale)] = tuple(sides)
+    return cues
 
 
 def _check_source(source, data_sources):

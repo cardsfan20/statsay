@@ -129,3 +129,29 @@ def test_single_number_fallback_does_not_override_configured_anchors():
     # Real case (RPG Maker sample, French): the only number is a use limit, not the MP cost.
     text = "Augmente l’attaque d’un allié.\nUtilisable jusqu’à 2 fois à la suite."
     assert summary(text, {"mpCost": ("PM",)}) == [(2, (), None)]
+
+
+def test_spaces_and_hyphens_in_terms_are_interchangeable():
+    vocabulary = {"material": {"faux_fur": ("faux fur",), "fur": ("fur",)}}
+    assert terms("Warm thanks to the faux-fur lining.", vocabulary) == [({"material": "faux_fur"}, HIGH)]
+    assert terms("Lined with faux  fur.", vocabulary) == [({"material": "faux_fur"}, HIGH)]
+
+
+CONTRAST_EN = (("than", "instead of", "rather than", "in lieu of", "unlike"), ())
+CONTRAST_JA = ((), ("より", "ではなく", "の代わりに"))
+MATERIAL = {"material": {"cotton": ("cotton", "綿"), "leather": ("leather", "革"), "nylon": ("nylon", "ナイロン")}}
+
+
+def test_contrast_cue_before_a_term_drops_it_in_that_clause_only():
+    text = "Made from nylon, rather than leather."
+    claims = extract_term_claims(text, MATERIAL, contrast=CONTRAST_EN)
+    assert [c.values for c in claims] == [{"material": "nylon"}]
+    text = "Very thick nylon gauntlets worn in lieu of metal or leather armor."
+    assert [c.values for c in extract_term_claims(text, MATERIAL, contrast=CONTRAST_EN)] == [{"material": "nylon"}]
+
+
+def test_contrast_cue_after_a_term_for_japanese_word_order():
+    text = "ナイロン製で、綿より丈夫。"
+    claims = extract_term_claims(text, MATERIAL, contrast=CONTRAST_JA)
+    assert [c.values for c in claims] == [{"material": "nylon"}]
+    assert len(extract_term_claims(text, MATERIAL)) == 2  # without cues, both terms count

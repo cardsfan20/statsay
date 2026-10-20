@@ -11,13 +11,14 @@ data/json/items/armor/ and data/json/materials.json at a pinned commit, resolves
 - data/items.json: per item, `material` (ids sharing a display name merged)
   and `material_family` (variants folded into a base family, see FAMILY)
 - locales/strings.csv: English descriptions
-- statsay.yaml: vocabulary B, copied from fixtures/cdda-materials/
+- statsay.yaml: vocabulary B v1, copied from fixtures/cdda-materials/ (blind test)
+- statsay-v2.yaml: vocabulary B v2 with aliases and contrast cues (written after v1)
 - statsay-auto.yaml: vocabulary A, generated: every material id -> its display name
 
 Cataclysm-DDA is CC-BY-SA, so its data is fetched at run time and never committed.
 
-`check` builds into a temporary directory, runs both vocabularies, compares
-vocabulary B's findings with fixtures/cdda-materials/expected.json, and prints
+`check` builds into a temporary directory, runs all three vocabularies,
+compares B v1 and v2 with fixtures/cdda-materials/expected.json, and prints
 every finding so it can be classified by hand.
 """
 
@@ -135,6 +136,7 @@ def build(ref, out_dir):
         writer.writerow(["key", "en"])
         writer.writerows(rows)
     shutil.copy2(FIXTURE / "statsay.yaml", out_dir / "statsay.yaml")
+    shutil.copy2(FIXTURE / "statsay-v2.yaml", out_dir / "statsay-v2.yaml")
 
     auto = yaml.safe_load((FIXTURE / "statsay.yaml").read_text(encoding="utf-8"))
     auto["bindings"][0]["watched_fields"] = ["material"]
@@ -158,31 +160,34 @@ def check(ref):
         build(ref, Path(tmp) / "input")
         materials = {d["id"]: d for d in json.loads((Path(tmp) / "input/data/items.json").read_text("utf-8"))}
         results = {name: run(load_config(Path(tmp) / "input" / name))
-                   for name in ("statsay.yaml", "statsay-auto.yaml")}
+                   for name in ("statsay.yaml", "statsay-v2.yaml", "statsay-auto.yaml")}
 
     failed = False
-    for name, label in (("statsay.yaml", "B (hand-written)"), ("statsay-auto.yaml", "A (generated)")):
+    for name, label in (("statsay.yaml", "B v1 (hand-written, blind)"), ("statsay-v2.yaml", "B v2 (aliases, cues)"),
+                        ("statsay-auto.yaml", "A (generated)")):
         result = results[name]
         flagged = sorted({f.key for f in result.findings})
         print(f"\n== Vocabulary {label}: {result.stats['checked']} strings checked, "
               f"{len(result.findings)} findings on {len(flagged)} items")
         for f in result.findings:
             item = materials[f.entity.split(".", 1)[1]]
-            print(f"  {f.entity:42} text names {f.claimed!r:14} data {item['material_family'] if name == 'statsay.yaml' else item['material']}")
+            shown = item["material_family"] if name == "statsay.yaml" else item["material"]
+            print(f"  {f.entity:42} text names {f.claimed!r:14} data {shown}")
             print(f"      \"{f.text[:150]}\"")
 
-    actual = {e1.identity(f.to_dict()) for f in results["statsay.yaml"].findings}
-    for item in expected["required"]:
-        if e1.identity(item) not in actual:
-            print(f"MISSED     {item}")
-            failed = True
-    for key in expected["forbidden_keys"]:
-        if any(f.key == key for f in results["statsay.yaml"].findings):
-            print(f"UNEXPECTED finding on {key}")
-            failed = True
+    for name in ("statsay.yaml", "statsay-v2.yaml"):
+        actual = {e1.identity(f.to_dict()) for f in results[name].findings}
+        for item in expected[name]["required"]:
+            if e1.identity(item) not in actual:
+                print(f"MISSED     {name}: {item}")
+                failed = True
+        for key in expected[name]["forbidden_keys"]:
+            if any(f.key == key for f in results[name].findings):
+                print(f"UNEXPECTED {name}: finding on {key}")
+                failed = True
     if failed:
         sys.exit(1)
-    print(f"\nOK: vocabulary B matches expected.json for {ref[:9]}")
+    print(f"\nOK: vocabularies B v1 and v2 match expected.json for {ref[:9]}")
 
 
 def main():

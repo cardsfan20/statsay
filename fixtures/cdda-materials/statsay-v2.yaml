@@ -1,0 +1,38 @@
+# Vocabulary B v2 for Cataclysm-DDA armor materials. Written AFTER seeing v1's results
+# (statsay.yaml), to measure what value aliases, hyphen/space equivalence and contrast
+# cues remove. Unlike v1, it is not a blind test.
+#
+# Uses the raw `material` field (ids sharing a display name merged by the converter)
+# and lets `aliases` do the family folding that v1 needed converter tricks for.
+
+data_sources:
+  - { id: items, path: data/items.json }
+
+localization:
+  - { format: csv, path: locales/strings.csv, key_column: key, locales: [en] }
+
+bindings:
+  - convention: "item.{id}.description"
+    source: items
+    watched_fields: [material]
+
+contrast_cues:
+  en:
+    before: ["than", "instead of", "rather than", "in lieu of", "unlike", "compared to", "as opposed to"]
+
+claims:
+  material:
+    kind: enum
+    vocabulary:
+      cotton:   { en: ["cotton"], aliases: [cotton_quilted] }
+      nylon:    { en: ["nylon", "polyester", "synthetic fabric"], aliases: [nylon_quilted] }
+      wool:     { en: ["wool", "woolen", "woollen"], aliases: [wool_quilted] }
+      leather:  { en: ["leather"], aliases: [leather_treated] }
+      fur:      { en: ["fur"], aliases: [mut_fur] }
+      faux_fur: { en: ["faux fur", "fake fur"] }
+      kevlar:   { en: ["kevlar"], aliases: [kevlar_layered, kevlar_rigid] }
+      lycra:    { en: ["lycra", "spandex"] }
+      neoprene: { en: ["neoprene"] }
+      nomex:    { en: ["nomex"] }
+      denim:    { en: ["denim"] }
+      canvas:   { en: ["canvas"] }

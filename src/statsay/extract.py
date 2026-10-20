@@ -155,14 +155,30 @@ def extract_number_claims(text: str, anchors_by_field: dict[str, tuple[str, ...]
 
 
 def extract_term_claims(text: str, vocabulary_by_field: dict[str, dict[str, tuple[str, ...]]],
-                        codes: re.Pattern | None = None) -> list[TermClaim]:
+                        codes: re.Pattern | None = None,
+                        contrast: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())) -> list[TermClaim]:
     """Find vocabulary terms in one string.
 
     `vocabulary_by_field` maps each enum watched field to {value key: terms}
     for this string's locale. Where matches overlap, the longest wins, so a
     negated phrase ("cannot target air") beats the phrase it contains.
+    `contrast` holds cues that mark a term as a comparison rather than a claim:
+    cues that come before it in the same clause ("more than cotton") and cues
+    that come after it (「綿より」). Such terms are dropped.
     """
     norm, origin = normalize(mask(text, codes))
+    starts = _clause_starts(norm)
+
+    def clause(position):
+        return bisect_right(starts, position) - 1
+
+    cues_before = [m.start() for cue in contrast[0] for m in _anchor_pattern(cue).finditer(norm)]
+    cues_after = [m.start() for cue in contrast[1] for m in _anchor_pattern(cue).finditer(norm)]
+
+    def contrasted(start, end):
+        return any(cue < start and clause(cue) == clause(start) for cue in cues_before) or \
+               any(cue >= end and clause(cue) == clause(start) for cue in cues_after)
+
     by_span: dict[tuple[int, int], dict[str, str]] = {}
     for field, values in vocabulary_by_field.items():
         for value, terms in values.items():
@@ -174,6 +190,7 @@ def extract_term_claims(text: str, vocabulary_by_field: dict[str, dict[str, tupl
     for start, end in sorted(by_span, key=lambda span: (span[0] - span[1], span[0])):
         if not any(start < other_end and other_start < end for other_start, other_end in chosen):
             chosen.append((start, end))
+    chosen = [(start, end) for start, end in chosen if not contrasted(start, end)]
 
     return [
         TermClaim(
@@ -217,8 +234,13 @@ def _between_digits(text: str, index: int) -> bool:
 
 @lru_cache(maxsize=None)
 def _anchor_pattern(term: str) -> re.Pattern:
-    """Case-insensitive; ASCII-letter edges must not touch other ASCII letters."""
-    term = unicodedata.normalize("NFKC", term)
+    """Case-insensitive; ASCII-letter edges must not touch other ASCII letters.
+
+    Spaces and hyphens inside a term are interchangeable: "faux fur" also
+    matches "faux-fur" and "faux  fur".
+    """
+    term = unicodedata.normalize("NFKC", term).strip()
+    body = r"[\s\-\u2010\u2011]+".join(re.escape(part) for part in re.split(r"[\s\-\u2010\u2011]+", term))
     prefix = r"(?<![A-Za-z])" if term[:1].isascii() and term[:1].isalpha() else ""
     suffix = r"(?![A-Za-z])" if term[-1:].isascii() and term[-1:].isalpha() else ""
-    return re.compile(prefix + re.escape(term) + suffix, re.IGNORECASE)
+    return re.compile(prefix + body + suffix, re.IGNORECASE)

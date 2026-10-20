@@ -43,6 +43,31 @@ The 34 plausible contradictions are 7 distinct issues, many repeated across size
 
 At master, a new candidate appears after the survivor-gear rework: the faux-fur hoods say "lined with faux fur" but list real `fur` (3 findings).
 
+## Vocabulary B v2: aliases, hyphens and contrast cues (M3)
+
+`statsay-v2.yaml` uses three M3 features instead of the converter's family folding:
+- `aliases` (e.g. `kevlar` also satisfied by `kevlar_layered`, `fur` by `mut_fur`)
+- hyphen/space equivalence ("faux-fur" matches "faux fur")
+- English `contrast_cues` ("than", "instead of", "rather than", "in lieu of", "unlike", "compared to", "as opposed to")
+
+It was written after seeing v1's results, so it is not a blind test.
+
+| At `5d32050` | Findings | Items | Plausible contradictions kept | Precision |
+| --- | --- | --- | --- | --- |
+| v1 as committed | 120 | 111 | 34 | 28% |
+| v1 with hyphen equivalence only | 112 | 108 | 34 | 30% |
+| v2 | 57 | 56 | 34 | 60% |
+
+The blanket finding is still required at the bug commit and forbidden after the fix, for both v1 and v2. The 23 findings v2 still gets wrong:
+
+| Findings | Cause |
+| --- | --- |
+| 7 | "nylon" sportswear whose material is `lycra` (a blend) |
+| 6 | Minor parts such as leather straps |
+| 5 | Loose wording on faux-fur items ("lined with fur", "imitation fur") |
+| 4 | Comparisons the cues miss ("not as warm as natural fur", "Like real fur") |
+| 1 | The utility kilt's "woolen kilt … cotton canvas" (2 findings) |
+
 ## What this means
 
 - **Recall:** the one known bug is caught, at the right commit, by a vocabulary written beforehand. The catch depends on one synonym a human had to add.
