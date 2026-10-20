@@ -26,6 +26,9 @@ python -m venv .venv
 .venv/Scripts/statsay check fixtures/toy-game
 .venv/Scripts/python -m pytest
 .venv/Scripts/python scripts/e1.py fixtures/toy-game   # E1 metrics and Gate 1 verdict
+.venv/Scripts/python scripts/wesnoth_did.py check 83d4b397f1de466c721e4e393b361c71fc4f5b6c   # real bug: Wesnoth #8549
 ```
+
+The Wesnoth check downloads files at a pinned commit; see [fixtures/wesnoth-did/](fixtures/wesnoth-did/README.md).
 
 `statsay check` exits with 1 when findings at or above `--fail-on` exist (default `error`), and with 2 on configuration errors. Use `--format json` for machine-readable output.

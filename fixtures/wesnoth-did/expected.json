@@ -1,0 +1,13 @@
+{
+  "83d4b397f1de466c721e4e393b361c71fc4f5b6c": {
+    "label": "Tag 1.16.11, shipped with bug #8549 (shadow wave AMLA says +1, grants +2)",
+    "findings": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "amla.mal_keshar_amla_shadow.description", "field": "damage", "claimed": 1, "actual": 2 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "amla.mal_keshar_amla_shadow.description", "field": "damage", "claimed": 1, "actual": 2 }
+    ]
+  },
+  "8cc930666e47931b3e3436790ceeb210d4144200": {
+    "label": "Merge of PR #7770, which fixed the data (increase_damage 2 -> 1)",
+    "findings": []
+  }
+}

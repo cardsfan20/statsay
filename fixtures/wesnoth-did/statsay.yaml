@@ -1,0 +1,37 @@
+# Statsay configuration for Wesnoth's Descent into Darkness AMLAs.
+# Used by scripts/wesnoth_did.py, which writes data/ and locales/ next to a copy
+# of this file. Written before running Statsay on the real data.
+
+data_sources:
+  - id: amlas
+    path: data/amlas.json
+    entity_id_field: id
+
+localization:
+  - path: locales/strings.csv
+    format: csv
+    key_column: key
+    locales: [en, ja]
+
+bindings:
+  - convention: "amla.{id}.description"
+    source: amlas
+    watched_fields: [damage, jaw_damage, claws_damage, movement, resistance]
+
+claims:
+  damage:
+    kind: number
+    anchors: { en: ["damage"], ja: ["ダメージ"] }
+  jaw_damage:
+    kind: number
+    anchors: { en: ["Jaw"], ja: ["顎爪"] }
+  claws_damage:
+    kind: number
+    anchors: { en: ["Claws"], ja: ["かぎ爪"] }
+  movement:
+    kind: number
+    anchors: { en: ["movement"], ja: ["移動力"] }
+  resistance:
+    kind: number
+    unit: percent
+    anchors: { en: ["%"], ja: ["%"] }
