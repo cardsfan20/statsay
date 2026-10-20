@@ -16,7 +16,7 @@ import shutil
 import sys
 from pathlib import Path
 
-COPIED = ["config.yaml", "data", "locales"]
+COPIED = ["statsay.yaml", "data", "locales"]
 CATEGORIES = {"data_only", "text_only", "negative"}
 SEVERITIES = {"error", "warning", "info"}
 
@@ -226,14 +226,11 @@ def validate(root):
     print(f"OK: {len(ids)} entities, {len(keys)} strings, {len(mutations)} mutations ({summary})")
 
 
-def apply(root, mutation_id, out_dir):
+def materialize(root, mutation, out_dir):
+    """Write a copy of the fixture with `mutation` applied to `out_dir`."""
     root, out_dir = Path(root), Path(out_dir)
     if out_dir.exists() and any(out_dir.iterdir()):
         raise FixtureError(f"{out_dir} is not empty")
-    mutation = next((m for m in load_mutations(root) if m["id"] == mutation_id), None)
-    if mutation is None:
-        raise FixtureError(f"no mutation '{mutation_id}'")
-
     ws = apply_mutation(root, mutation)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in COPIED:
@@ -244,6 +241,13 @@ def apply(root, mutation_id, out_dir):
             shutil.copy2(source, out_dir / name)
     for rel, text in ws.rendered().items():
         (out_dir / rel).write_text(text, encoding="utf-8", newline="\n")
+
+
+def apply(root, mutation_id, out_dir):
+    mutation = next((m for m in load_mutations(root) if m["id"] == mutation_id), None)
+    if mutation is None:
+        raise FixtureError(f"no mutation '{mutation_id}'")
+    materialize(root, mutation, out_dir)
     print(f"Wrote {mutation_id} to {out_dir}")
 
 

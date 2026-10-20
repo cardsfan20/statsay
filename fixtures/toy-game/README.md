@@ -8,7 +8,7 @@ Ground truth for evaluation E1 (mutation fixtures) and the test data for M1. A c
 | --- | --- |
 | `data/items.json` | 13 items; watched fields `heal`, `mp`, `duration`, `attack_up`, `revive_percent`, `scope`; unwatched `price` |
 | `locales/strings.csv` | `key,en,ja`; names and descriptions, plus one tutorial hint |
-| `config.yaml` | Bindings and claim rules in the spec's proposed syntax |
+| `statsay.yaml` | Bindings and claim rules in the spec's proposed syntax |
 | `expected/clean.json` | Coverage and findings for the unmutated fixture |
 | `mutations.json` | 10 data-only, 2 text-only and 10 negative-control mutations with expected findings |
 
