@@ -2,7 +2,7 @@
 
 Does your text say what your stats say? Statsay is a CI check that finds localized game text contradicting the gameplay data it describes. For example, a description that still says "Restores 50 HP" in English and Japanese after `heal` changed to 40.
 
-Status: early development (M2 built). The design is in [Localization as Code — Spec Revision 3.md](Localization%20as%20Code%20—%20Spec%20Revision%203.md).
+Status: early development (M3 built; no pilot users yet). The design is in [Localization as Code — Spec Revision 3.md](Localization%20as%20Code%20—%20Spec%20Revision%203.md).
 
 ## What it does
 
@@ -21,7 +21,12 @@ Status: early development (M2 built). The design is in [Localization as Code —
   - `unbound_claim` (info): a number not tied to any field.
 - **Runs offline**; no model calls.
 
-CI integrations, PR summaries and translator write-back come in M3.
+- **CI and agents** (see [docs/ci.md](docs/ci.md)):
+  - a grouped PR summary, SARIF with suggested fixes, a patch (`git apply`) and a short agent format
+  - `--changed-only`
+  - an audit-then-baseline workflow
+  - a GitHub Action and a pre-commit hook
+- **Translator write-back** (opt-in): `statsay flag` marks affected PO entries `#, fuzzy` with a comment and never edits translations.
 
 ## Try it
 
@@ -38,4 +43,9 @@ python -m venv .venv
 
 The real-bug checks download files at pinned commits; see [fixtures/wesnoth-did/](fixtures/wesnoth-did/README.md) and [fixtures/cdda-materials/](fixtures/cdda-materials/README.md).
 
-`statsay check` exits with 1 when findings at or above `--fail-on` exist (default `error`), and with 2 on configuration errors. Use `--format json` for machine-readable output, and `--base-ref origin/main` (or `--base DIR`) for diff mode.
+`statsay check` exits with 1 when new findings at or above `--fail-on` exist (default `error`), and with 2 on configuration errors. Options:
+- `--base-ref origin/main` (or `--base DIR`) for diff mode
+- `--format summary|sarif|agent|patch|json` for other outputs
+- `--baseline FILE` to suppress reviewed findings
+
+Use `statsay baseline` to record reviewed findings and `statsay flag` for translator write-back.

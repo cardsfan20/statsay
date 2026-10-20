@@ -1,0 +1,7 @@
+- id: statsay
+  name: statsay
+  description: Find localized game text that contradicts the game data it describes.
+  entry: statsay check --base-ref HEAD
+  language: python
+  pass_filenames: false
+  files: \.(json|csv|po|yaml)$
