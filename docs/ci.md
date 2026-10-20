@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: cardsfan20/statsay@v0.1.0
+      - uses: cardsfan20/statsay@v0.2.0
         with:
           path: .                        # statsay.yaml or its directory
           baseline: .statsay-baseline.json
@@ -53,7 +53,7 @@ Not yet tested against GitHub itself: `ci/run-check.sh` is tested locally agains
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/cardsfan20/statsay
-    rev: v0.1.0
+    rev: v0.2.0
     hooks:
       - id: statsay      # runs `statsay check --base-ref HEAD` when data or text files change
 ```

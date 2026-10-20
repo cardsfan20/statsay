@@ -2,7 +2,7 @@
 
 Does your text say what your stats say? Statsay is a CI check that finds localized game text contradicting the gameplay data it describes. For example, a description that still says "Restores 50 HP" in English and Japanese after `heal` changed to 40.
 
-Status: early development (v0.1). Feedback and issues are welcome at [github.com/cardsfan20/statsay](https://github.com/cardsfan20/statsay/issues).
+Status: early development (v0.2). Feedback and issues are welcome at [github.com/cardsfan20/statsay](https://github.com/cardsfan20/statsay/issues).
 
 ## Quick start
 
