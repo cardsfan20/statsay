@@ -1,4 +1,4 @@
-from statsay.extract import HIGH, LOW, extract_number_claims, extract_term_claims, normalize
+from statsay.extract import CONTROL_CODES, HIGH, LOW, extract_number_claims, extract_term_claims, normalize
 
 HEAL = {"heal": ("HP",)}
 REGEN_EN = {"heal": ("HP",), "duration": ("second", "seconds")}
@@ -105,3 +105,27 @@ def test_term_span_points_into_original_text():
     text = "味方全体のHPを回復"
     [claim] = extract_term_claims(text, {"scope": {"all_allies": ("味方全体",)}})
     assert text[claim.span[0]:claim.span[1]] == "味方全体"
+
+
+def test_line_breaks_are_wrapping_not_clause_breaks():
+    assert summary("Restores 500\nHP to one ally.", HEAL) == [(500, ("heal",), HIGH)]
+
+
+def test_no_break_space_groups_digits():
+    assert summary("Restaure 1 500 PV.", {"heal": ("PV",)}) == [(1500, ("heal",), HIGH)]
+    assert summary("Restaure 1 500 PV.", {"heal": ("PV",)}) == [(1500, ("heal",), HIGH)]
+
+
+def test_rpgmaker_control_codes_are_masked():
+    codes = CONTROL_CODES["rpgmaker"]
+    text = r"\C[2]毒\C[0]を治し、HPを\V[5]回復する。\I[64]"
+    assert extract_number_claims(text, HEAL, codes) == []
+    claims = extract_number_claims(r"\C[4]HPを500\C[0]回復", HEAL, codes)
+    assert [(c.value, c.field) for c in claims] == [(500, "heal")]
+    assert extract_term_claims(r"\C[2]毒\C[0]", {"cures": {"4": ("毒",)}}, codes)[0].values == {"cures": "4"}
+
+
+def test_single_number_fallback_does_not_override_configured_anchors():
+    # Real case (RPG Maker sample, French): the only number is a use limit, not the MP cost.
+    text = "Augmente l’attaque d’un allié.\nUtilisable jusqu’à 2 fois à la suite."
+    assert summary(text, {"mpCost": ("PM",)}) == [(2, (), None)]

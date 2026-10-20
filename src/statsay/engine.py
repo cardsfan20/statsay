@@ -15,10 +15,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from statsay import StatsayError
-from statsay.adapters import Reader, load_entities, load_strings
+from statsay.adapters import Reader, load_data_strings, load_entities, load_strings
 from statsay.binding import Binding, Coverage, resolve
 from statsay.config import Config, term_key
-from statsay.extract import HIGH, extract_number_claims, extract_term_claims
+from statsay.extract import CONTROL_CODES, HIGH, extract_number_claims, extract_term_claims
+from statsay.fields import apply_derived
 
 ERROR = "error"
 WARNING = "warning"
@@ -89,12 +90,20 @@ def run(config: Config, base: Reader | None = None) -> Result:
 def _load(config: Config, read: Reader | None = None, missing_ok: bool = False):
     options = {"missing_ok": missing_ok, **({"read": read} if read else {})}
     entities = {source_id: load_entities(source, **options) for source_id, source in config.data_sources.items()}
+    for source_id, by_id in entities.items():
+        apply_derived(config, source_id, by_id)
     strings: dict = {}
     for source in config.localization:
-        for key, by_locale in load_strings(source, **options).items():
-            if key in strings:
-                raise StatsayError(f"key '{key}' appears in more than one localization file")
-            strings[key] = by_locale
+        if source.format == "csv":
+            loaded = load_strings(source, **options)
+        else:
+            loaded = load_data_strings(source, entities[source.source], config.data_sources[source.source].path)
+        for key, by_locale in loaded.items():
+            slot = strings.setdefault(key, {})
+            for locale, loc in by_locale.items():
+                if locale in slot:
+                    raise StatsayError(f"key '{key}' has more than one '{locale}' text")
+                slot[locale] = loc
     return entities, strings
 
 
@@ -147,7 +156,8 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
         claimed_fields[locale] = set()
 
         anchors = {name: rule.anchors.get(locale, ()) for name, rule in numeric.items()}
-        for claim in extract_number_claims(loc.text, anchors):
+        codes = CONTROL_CODES.get(loc.codes)
+        for claim in extract_number_claims(loc.text, anchors, codes):
             if not claim.fields:
                 findings.append(Finding(
                     rule="unbound_claim", severity=INFO, value=claim.value, span=claim.span,
@@ -177,7 +187,7 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
             name: {value: terms.get(locale, ()) for value, terms in rule.vocabulary.items()}
             for name, rule in enums.items()
         }
-        for claim in extract_term_claims(loc.text, vocabularies):
+        for claim in extract_term_claims(loc.text, vocabularies, codes):
             claimed_fields[locale].update(claim.values)
             if claim.field:
                 claimed[locale].append((claim.field, claim.values[claim.field], claim.confidence))

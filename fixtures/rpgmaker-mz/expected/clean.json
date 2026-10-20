@@ -1,0 +1,7 @@
+{
+  "coverage": [
+    {"source": "items", "rule": "item.{id}.description", "entities": 7, "bound": 7, "unbound": []},
+    {"source": "skills", "rule": "skill.{id}.description", "entities": 2, "bound": 1, "unbound": ["skills.1"]}
+  ],
+  "findings": []
+}

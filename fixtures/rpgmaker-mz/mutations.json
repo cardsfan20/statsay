@@ -1,0 +1,164 @@
+[
+  {
+    "id": "R01",
+    "category": "data_only",
+    "summary": "Potion HP recovery lowered (effects[code=11].value2)",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 1, "field": "effects", "from": [{"code": 11, "dataId": 0, "value1": 0, "value2": 500}], "to": [{"code": 11, "dataId": 0, "value1": 0, "value2": 400}]}
+    ],
+    "expected": [
+      {"rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.1.description", "field": "heal", "claimed": 500, "actual": 400},
+      {"rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.1.description", "field": "heal", "claimed": 500, "actual": 400}
+    ]
+  },
+  {
+    "id": "R02",
+    "category": "data_only",
+    "summary": "Magic Water MP rate lowered; stored as a fraction (0.5 -> 0.3)",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 3, "field": "effects", "from": [{"code": 12, "dataId": 0, "value1": 0.5, "value2": 0}], "to": [{"code": 12, "dataId": 0, "value1": 0.3, "value2": 0}]}
+    ],
+    "expected": [
+      {"rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.3.description", "field": "mp_rate", "claimed": 50, "actual": 30},
+      {"rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.3.description", "field": "mp_rate", "claimed": 50, "actual": 30}
+    ]
+  },
+  {
+    "id": "R03",
+    "category": "data_only",
+    "summary": "Panacea no longer removes sleep (state 10); both locales still name it",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 6, "field": "effects", "from": [{"code": 22, "dataId": 4, "value1": 1, "value2": 0}, {"code": 22, "dataId": 10, "value1": 1, "value2": 0}], "to": [{"code": 22, "dataId": 4, "value1": 1, "value2": 0}]}
+    ],
+    "expected": [
+      {"rule": "enum_term_mismatch", "severity": "warning", "locale": "ja", "key": "item.6.description", "field": "cures", "claimed": "10", "actual": 4},
+      {"rule": "enum_term_mismatch", "severity": "warning", "locale": "en", "key": "item.6.description", "field": "cures", "claimed": "10", "actual": 4}
+    ]
+  },
+  {
+    "id": "R04",
+    "category": "data_only",
+    "summary": "Potion scope widened from one ally (7) to all allies (8)",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 1, "field": "scope", "from": 7, "to": 8}
+    ],
+    "expected": [
+      {"rule": "enum_term_mismatch", "severity": "warning", "locale": "ja", "key": "item.1.description", "field": "scope", "claimed": "7", "actual": 8},
+      {"rule": "enum_term_mismatch", "severity": "warning", "locale": "en", "key": "item.1.description", "field": "scope", "claimed": "7", "actual": 8}
+    ]
+  },
+  {
+    "id": "R05",
+    "category": "data_only",
+    "summary": "Fire MP cost raised; the cost sits on the wrapped second line",
+    "edits": [
+      {"op": "set_field", "file": "data/Skills.json", "entity": 2, "field": "mpCost", "from": 5, "to": 8}
+    ],
+    "expected": [
+      {"rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "skill.2.description", "field": "mpCost", "claimed": 5, "actual": 8},
+      {"rule": "value_mismatch", "severity": "error", "locale": "en", "key": "skill.2.description", "field": "mpCost", "claimed": 5, "actual": 8}
+    ]
+  },
+  {
+    "id": "R06",
+    "category": "data_only",
+    "summary": "Fire damage formula changed; never evaluated, so only diff mode flags it",
+    "edits": [
+      {"op": "set_field", "file": "data/Skills.json", "entity": 2, "field": "damage", "from": {"critical": false, "elementId": 2, "formula": "100 + a.mat * 2 - b.mdf * 2", "type": 1, "variance": 20}, "to": {"critical": false, "elementId": 2, "formula": "150 + a.mat * 2 - b.mdf * 2", "type": 1, "variance": 20}}
+    ],
+    "expected": [
+      {"rule": "watched_field_changed", "severity": "warning", "locale": "ja", "key": "skill.2.description", "field": "damage_formula", "old": "100 + a.mat * 2 - b.mdf * 2", "new": "150 + a.mat * 2 - b.mdf * 2", "diff_only": true},
+      {"rule": "watched_field_changed", "severity": "warning", "locale": "en", "key": "skill.2.description", "field": "damage_formula", "old": "100 + a.mat * 2 - b.mdf * 2", "new": "150 + a.mat * 2 - b.mdf * 2", "diff_only": true}
+    ]
+  },
+  {
+    "id": "R07",
+    "category": "data_only",
+    "summary": "Elixir now restores 50% HP; 'fully restores' has no number to check",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 4, "field": "effects", "from": [{"code": 11, "dataId": 0, "value1": 1, "value2": 0}, {"code": 12, "dataId": 0, "value1": 1, "value2": 0}], "to": [{"code": 11, "dataId": 0, "value1": 0.5, "value2": 0}, {"code": 12, "dataId": 0, "value1": 1, "value2": 0}]}
+    ],
+    "expected": [
+      {"rule": "watched_field_changed", "severity": "warning", "locale": "ja", "key": "item.4.description", "field": "heal_rate", "old": 100, "new": 50, "diff_only": true},
+      {"rule": "watched_field_changed", "severity": "warning", "locale": "en", "key": "item.4.description", "field": "heal_rate", "old": 100, "new": 50, "diff_only": true}
+    ]
+  },
+  {
+    "id": "RT1",
+    "category": "text_only",
+    "summary": "EN Hi-Potion translation edited to a wrong value",
+    "edits": [
+      {"op": "set_text", "file": "locales/en.csv", "key": "item.2.description", "locale": "en", "from": "Restores 1,500\nHP to one ally.", "to": "Restores 1,000\nHP to one ally."}
+    ],
+    "expected": [
+      {"rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.2.description", "field": "heal", "claimed": 1000, "actual": 1500},
+      {"rule": "locale_value_divergence", "severity": "error", "locale": null, "key": "item.2.description", "field": "heal", "values": {"en": 1000, "ja": 1500}}
+    ]
+  },
+  {
+    "id": "RT2",
+    "category": "text_only",
+    "summary": "JA source description (in the database) edited to a wrong value",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 7, "field": "description", "from": "攻撃力が永久に3上がる。", "to": "攻撃力が永久に5上がる。"}
+    ],
+    "expected": [
+      {"rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.7.description", "field": "atk_up", "claimed": 5, "actual": 3},
+      {"rule": "locale_value_divergence", "severity": "error", "locale": null, "key": "item.7.description", "field": "atk_up", "values": {"en": 3, "ja": 5}}
+    ]
+  },
+  {
+    "id": "RN1",
+    "category": "negative",
+    "summary": "Unwatched field (price) changed",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 1, "field": "price", "from": 50, "to": 60}
+    ],
+    "expected": []
+  },
+  {
+    "id": "RN2",
+    "category": "negative",
+    "summary": "Note tag added",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 1, "field": "note", "from": "", "to": "<Category: Medicine>"}
+    ],
+    "expected": []
+  },
+  {
+    "id": "RN3",
+    "category": "negative",
+    "summary": "Control code colour changed in JA text; no claim changes",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 5, "field": "description", "from": "\\C[2]毒\\C[0]を治す。", "to": "\\C[3]毒\\C[0]を治す。"}
+    ],
+    "expected": []
+  },
+  {
+    "id": "RN4",
+    "category": "negative",
+    "summary": "Effects reordered; derived fields unchanged",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 4, "field": "effects", "from": [{"code": 11, "dataId": 0, "value1": 1, "value2": 0}, {"code": 12, "dataId": 0, "value1": 1, "value2": 0}], "to": [{"code": 12, "dataId": 0, "value1": 1, "value2": 0}, {"code": 11, "dataId": 0, "value1": 1, "value2": 0}]}
+    ],
+    "expected": []
+  },
+  {
+    "id": "RN5",
+    "category": "negative",
+    "summary": "Unused nameless slot gets a description; still skipped",
+    "edits": [
+      {"op": "set_field", "file": "data/Items.json", "entity": 8, "field": "description", "from": "", "to": "未使用 500"}
+    ],
+    "expected": []
+  },
+  {
+    "id": "RN6",
+    "category": "negative",
+    "summary": "Formula of a skill with no description changed",
+    "edits": [
+      {"op": "set_field", "file": "data/Skills.json", "entity": 1, "field": "damage", "from": {"critical": true, "elementId": -1, "formula": "a.atk * 4 - b.def * 2", "type": 1, "variance": 20}, "to": {"critical": true, "elementId": -1, "formula": "a.atk * 5 - b.def * 2", "type": 1, "variance": 20}}
+    ],
+    "expected": []
+  }
+]

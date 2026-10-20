@@ -1,0 +1,50 @@
+# Statsay configuration for a small Japanese-source RPG Maker MZ game.
+# Japanese text is the `description` field in the database; English comes from a
+# translation plugin's CSV export. Database layout checked against a public MZ
+# project on 2026-10-20 (see docs/rpgmaker-fit-note.md).
+
+data_sources:
+  - { id: items, path: data/Items.json, format: rpgmaker }
+  - { id: skills, path: data/Skills.json, format: rpgmaker }
+
+localization:
+  - { format: data, source: items, field: description, key: "item.{id}.description", locale: ja }
+  - { format: data, source: skills, field: description, key: "skill.{id}.description", locale: ja }
+  - { format: csv, path: locales/en.csv, key_column: key, locales: [en], control_codes: rpgmaker }
+
+fields:
+  heal:           { source: items, path: "effects[code=11].value2" }             # Recover HP, flat
+  heal_rate:      { source: items, path: "effects[code=11].value1", scale: 100 } # Recover HP, fraction -> %
+  mp:             { source: items, path: "effects[code=12].value2" }             # Recover MP, flat
+  mp_rate:        { source: items, path: "effects[code=12].value1", scale: 100 } # Recover MP, fraction -> %
+  cures:          { source: items, path: "effects[code=22].dataId" }             # Remove State: state ids
+  atk_up:         { source: items, path: "effects[code=42].value1" }             # Grow (parameter)
+  damage_formula: { source: skills, path: "damage.formula", kind: formula }      # watched, never evaluated
+
+bindings:
+  - convention: "item.{id}.description"
+    source: items
+    watched_fields: [heal, heal_rate, mp, mp_rate, cures, atk_up, scope]
+  - convention: "skill.{id}.description"
+    source: skills
+    watched_fields: [mpCost, damage_formula, scope]
+
+claims:
+  heal:      { kind: number, anchors: { en: ["HP"], ja: ["HP"] } }
+  heal_rate: { kind: number, unit: percent, anchors: { en: ["%"], ja: ["%"] } }
+  mp:        { kind: number, anchors: { en: ["MP"], ja: ["MP"] } }
+  mp_rate:   { kind: number, unit: percent, anchors: { en: ["%"], ja: ["%"] } }
+  atk_up:    { kind: number, anchors: { en: ["attack"], ja: ["攻撃力"] } }
+  mpCost:    { kind: number, anchors: { en: ["MP"], ja: ["消費MP"] } }
+  cures:
+    kind: enum
+    vocabulary:
+      4:  { en: ["poison"], ja: ["毒"] }
+      10: { en: ["sleep"], ja: ["睡眠"] }
+  scope:
+    kind: enum
+    vocabulary:
+      1: { en: ["one enemy"], ja: ["敵単体"] }
+      2: { en: ["all enemies"], ja: ["敵全体"] }
+      7: { en: ["one ally"], ja: ["味方単体"] }
+      8: { en: ["all allies"], ja: ["味方全体"] }

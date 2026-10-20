@@ -54,7 +54,9 @@ def in_scope(expected, mode):
 def run_on(directory, base_dir=None):
     config = load_config(directory)
     result = run(config, base=directory_reader(config, base_dir) if base_dir else None)
-    return [finding.to_dict() for finding in result.findings], result.stats["checked"]
+    coverage = [{"source": c.source, "rule": c.rule, "entities": c.entities, "bound": c.bound,
+                 "unbound": list(c.unbound)} for c in result.coverage]
+    return [finding.to_dict() for finding in result.findings], result.stats["checked"], coverage
 
 
 def cases(fixture_dir):
@@ -64,13 +66,14 @@ def cases(fixture_dir):
     `planted` is just the mutation's in-scope findings.
     """
     root = Path(fixture_dir)
-    clean = json.loads((root / "expected" / "clean.json").read_text(encoding="utf-8"))["findings"]
-    baseline = Counter(identity(f) for f in clean)
+    clean = json.loads((root / "expected" / "clean.json").read_text(encoding="utf-8"))
+    baseline = Counter(identity(f) for f in clean["findings"])
 
     for mode in MODES:
-        actual, checked = run_on(root, root if mode == "diff" else None)
+        actual, checked, coverage = run_on(root, root if mode == "diff" else None)
         yield dict(id="clean", mode=mode, category="clean", expected=baseline, planted=Counter(),
-                   out_of_scope=0, actual=actual, checked=checked)
+                   out_of_scope=0, actual=actual, checked=checked,
+                   coverage=coverage, expected_coverage=clean["coverage"])
 
     for mutation in fixture.load_mutations(root):
         with tempfile.TemporaryDirectory() as tmp:
@@ -78,7 +81,7 @@ def cases(fixture_dir):
             fixture.materialize(root, mutation, head)
             for mode in MODES:
                 planted = Counter(identity(f) for f in mutation["expected"] if in_scope(f, mode))
-                actual, checked = run_on(head, root if mode == "diff" else None)
+                actual, checked, _ = run_on(head, root if mode == "diff" else None)
                 yield dict(id=mutation["id"], mode=mode, category=mutation["category"],
                            expected=baseline + planted, planted=planted,
                            out_of_scope=sum(1 for f in mutation["expected"] if not in_scope(f, mode)),
@@ -93,6 +96,8 @@ def score(case):
     problems = []
     if any(item[1] == "error" for item in case["planted"]) and not fails_ci:
         problems.append("planted bug did not fail CI")
+    if "expected_coverage" in case and case["coverage"] != case["expected_coverage"]:
+        problems.append(f"coverage {case['coverage']} != expected {case['expected_coverage']}")
     return dict(found=expected & actual_ids, missed=expected - actual_ids, extra=actual_ids - expected,
                 fails_ci=fails_ci, problems=problems)
 

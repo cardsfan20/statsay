@@ -1,0 +1,11 @@
+key,en
+item.1.description,Restores 500 HP to one ally.
+item.2.description,"Restores 1,500
+HP to one ally."
+item.3.description,Restores 50% of MP to one ally.
+item.4.description,Fully restores HP and MP of one ally.
+item.5.description,Cures \C[2]poison\C[0].
+item.6.description,Cures poison and sleep for one ally.
+item.7.description,Permanently raises attack by 3.
+skill.2.description,"Fire magic damage to one enemy.
+Costs 5 MP."

@@ -45,7 +45,7 @@ def render_text(result: Result) -> str:
         lines.append("")
 
     for f in result.findings:
-        where = f"{f.file}:{f.line}" if f.file else f.key
+        where = (f"{f.file}:{f.line}" if f.line else f.file) if f.file else f.key
         locale = f.locale or "*"
         lines.append(f"{where}  {f.severity.upper():<7} {f.rule}  {locale}  {f.key}")
         lines.append(f"    {f.message}")

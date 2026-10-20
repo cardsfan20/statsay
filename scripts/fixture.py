@@ -70,7 +70,7 @@ class Workspace:
 
 def find_entity(data, entity_id, rel):
     for index, entity in enumerate(data):
-        if entity.get("id") == entity_id:
+        if isinstance(entity, dict) and entity.get("id") == entity_id:  # RPG Maker files start with null
             return index, entity
     raise FixtureError(f"{rel}: no entity '{entity_id}'")
 
@@ -190,17 +190,16 @@ def validate(root):
     check_round_trip(root)
 
     clean = Workspace(root)
-    ids = [entity["id"] for entity in clean.get_json("data/items.json")]
-    keys = [row[0] for row in clean.get_csv("locales/strings.csv")[1:]]
-    for name, values in (("entity id", ids), ("key", keys)):
-        duplicates = {value for value in values if values.count(value) > 1}
-        if duplicates:
-            raise FixtureError(f"duplicate {name}s: {sorted(duplicates)}")
+    entity_count = 0
+    for path in sorted((root / "data").glob("*.json")):
+        rel = path.relative_to(root).as_posix()
+        ids = [e["id"] for e in clean.get_json(rel) if isinstance(e, dict) and "id" in e]
+        _no_duplicates(ids, f"entity ids in {rel}")
+        entity_count += len(ids)
+    keys = csv_keys(clean, root)
 
     expected_clean = json.loads((root / "expected" / "clean.json").read_text(encoding="utf-8"))
-    check_findings(expected_clean["findings"], set(keys), "expected/clean.json")
-    if expected_clean["coverage"]["entities"] != len(ids):
-        raise FixtureError("expected/clean.json: entity count does not match data")
+    check_findings(expected_clean["findings"], keys, "expected/clean.json")
 
     mutations = load_mutations(root)
     mutation_ids = [mutation["id"] for mutation in mutations]
@@ -219,11 +218,27 @@ def validate(root):
             ws = apply_mutation(root, mutation)
         except FixtureError as error:
             raise FixtureError(f"{where}: {error}") from None
-        mutated_keys = {row[0] for row in ws.get_csv("locales/strings.csv")[1:]}
-        check_findings(mutation["expected"], mutated_keys, where)
+        check_findings(mutation["expected"], csv_keys(ws, root), where)
 
     summary = ", ".join(f"{counts[c]} {c}" for c in sorted(CATEGORIES))
-    print(f"OK: {len(ids)} entities, {len(keys)} strings, {len(mutations)} mutations ({summary})")
+    print(f"OK: {entity_count} entities, {len(keys)} CSV keys, {len(mutations)} mutations ({summary})")
+
+
+def csv_keys(ws, root):
+    """Keys across all locales/*.csv files (first column), checking each file for duplicates."""
+    keys = set()
+    for path in sorted((Path(root) / "locales").glob("*.csv")):
+        rel = path.relative_to(root).as_posix()
+        file_keys = [row[0] for row in ws.get_csv(rel)[1:]]
+        _no_duplicates(file_keys, f"keys in {rel}")
+        keys.update(file_keys)
+    return keys
+
+
+def _no_duplicates(values, what):
+    duplicates = {value for value in values if values.count(value) > 1}
+    if duplicates:
+        raise FixtureError(f"duplicate {what}: {sorted(duplicates, key=str)}")
 
 
 def materialize(root, mutation, out_dir):

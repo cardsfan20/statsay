@@ -5,28 +5,58 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import re
+
 import yaml
 
 from statsay import StatsayError
+from statsay.extract import CONTROL_CODES
 
 CONFIG_NAME = "statsay.yaml"
 CLAIM_KINDS = {"number", "enum"}
-LOCALIZATION_FORMATS = {"csv"}
+DATA_FORMATS = {"json", "rpgmaker"}
+LOCALIZATION_FORMATS = {"csv", "data"}
+FIELD_KINDS = {"value", "formula"}
+PATH_SEGMENT_RE = re.compile(r"^(\w+)(?:\[(\w+)=([^\]]+)\])?$")
 
 
 @dataclass(frozen=True)
 class DataSource:
     id: str
     path: Path
-    entity_id_field: str
+    entity_id_field: str = "id"
+    format: str = "json"  # "rpgmaker": MV/MZ database file (null first entry, unused slots)
 
 
 @dataclass(frozen=True)
 class LocalizationSource:
-    path: Path
-    format: str
-    key_column: str
+    format: str                       # "csv", or "data": text stored in a data source field
     locales: tuple[str, ...]
+    path: Path | None = None          # csv
+    key_column: str | None = None     # csv
+    source: str | None = None         # data: data source id
+    field: str | None = None          # data: entity field holding the text, e.g. description
+    key_pattern: str | None = None    # data: key given to each entity's text, e.g. item.{id}.description
+    control_codes: str | None = None  # engine whose control codes are masked, e.g. rpgmaker
+
+
+@dataclass(frozen=True)
+class PathSegment:
+    key: str
+    filter_key: str | None = None     # list elements whose filter_key equals filter_value
+    filter_value: object = None
+
+
+@dataclass(frozen=True)
+class DerivedField:
+    """A field read from nested data, e.g. effects[code=11].value2, with fixed transforms."""
+    name: str
+    source: str
+    path: tuple[PathSegment, ...]
+    kind: str = "value"               # "formula": never evaluated, only watched for changes
+    scale: float = 1
+    offset: float = 0
+    divide: float = 1
 
 
 @dataclass(frozen=True)
@@ -71,6 +101,7 @@ class Config:
     conventions: tuple[ConventionBinding, ...]
     explicits: tuple[ExplicitBinding, ...]
     claims: dict[str, ClaimRule]
+    fields: dict[str, DerivedField]
 
 
 def find_config(path: Path) -> Path:
@@ -94,29 +125,20 @@ def load_config(path: Path) -> Config:
 
     data_sources = {}
     for item in _list(raw, "data_sources", required=True):
+        fmt = item.get("format", "json")
+        if fmt not in DATA_FORMATS:
+            raise StatsayError(f"data_sources: unsupported format '{fmt}' (supported: {sorted(DATA_FORMATS)})")
         source = DataSource(
             id=_str(item, "id", "data_sources"),
             path=root / _str(item, "path", "data_sources"),
-            entity_id_field=_str(item, "entity_id_field", "data_sources"),
+            entity_id_field=item.get("entity_id_field") or "id",
+            format=fmt,
         )
         if source.id in data_sources:
             raise StatsayError(f"data_sources: duplicate id '{source.id}'")
         data_sources[source.id] = source
 
-    localization = []
-    for item in _list(raw, "localization", required=True):
-        fmt = _str(item, "format", "localization")
-        if fmt not in LOCALIZATION_FORMATS:
-            raise StatsayError(f"localization: unsupported format '{fmt}' (supported: csv)")
-        locales = item.get("locales")
-        if not isinstance(locales, list) or not locales:
-            raise StatsayError("localization: 'locales' must be a non-empty list")
-        localization.append(LocalizationSource(
-            path=root / _str(item, "path", "localization"),
-            format=fmt,
-            key_column=_str(item, "key_column", "localization"),
-            locales=tuple(str(locale) for locale in locales),
-        ))
+    localization = [_localization(item, root, data_sources) for item in _list(raw, "localization", required=True)]
 
     conventions, explicits = [], []
     for item in _list(raw, "bindings", required=True):
@@ -167,6 +189,15 @@ def load_config(path: Path) -> Config:
             validated=bool(body.get("validated", False)),
         )
 
+    fields = {}
+    raw_fields = raw.get("fields") or {}
+    if not isinstance(raw_fields, dict):
+        raise StatsayError("fields: expected a mapping of field names")
+    for name, body in raw_fields.items():
+        fields[str(name)] = _derived_field(str(name), body, data_sources)
+        if fields[str(name)].kind == "formula" and name in claims:
+            raise StatsayError(f"fields.{name}: formula fields are never evaluated, so they can't have claims")
+
     return Config(
         root=root,
         data_sources=data_sources,
@@ -174,7 +205,65 @@ def load_config(path: Path) -> Config:
         conventions=tuple(conventions),
         explicits=tuple(explicits),
         claims=claims,
+        fields=fields,
     )
+
+
+def _localization(item, root, data_sources):
+    fmt = _str(item, "format", "localization")
+    if fmt not in LOCALIZATION_FORMATS:
+        raise StatsayError(f"localization: unsupported format '{fmt}' (supported: {sorted(LOCALIZATION_FORMATS)})")
+    codes = item.get("control_codes")
+    if codes is not None and codes not in CONTROL_CODES:
+        raise StatsayError(f"localization: unknown control_codes '{codes}' (known: {sorted(CONTROL_CODES)})")
+
+    if fmt == "csv":
+        locales = item.get("locales")
+        if not isinstance(locales, list) or not locales:
+            raise StatsayError("localization: 'locales' must be a non-empty list")
+        return LocalizationSource(
+            format=fmt, locales=tuple(str(locale) for locale in locales),
+            path=root / _str(item, "path", "localization"),
+            key_column=_str(item, "key_column", "localization"), control_codes=codes,
+        )
+
+    source = _str(item, "source", "localization")
+    _check_source(source, data_sources)
+    pattern = _str(item, "key", "localization")
+    if "{id}" not in pattern:
+        raise StatsayError(f"localization: key '{pattern}' must contain {{id}}")
+    if codes is None and data_sources[source].format == "rpgmaker":
+        codes = "rpgmaker"
+    return LocalizationSource(
+        format=fmt, locales=(_str(item, "locale", "localization"),), source=source,
+        field=_str(item, "field", "localization"), key_pattern=pattern, control_codes=codes,
+    )
+
+
+def _derived_field(name, body, data_sources):
+    if not isinstance(body, dict):
+        raise StatsayError(f"fields.{name}: expected a mapping")
+    source = _str(body, "source", f"fields.{name}")
+    _check_source(source, data_sources)
+    segments = []
+    for part in _str(body, "path", f"fields.{name}").split("."):
+        match = PATH_SEGMENT_RE.match(part)
+        if not match:
+            raise StatsayError(f"fields.{name}: bad path segment '{part}' (expected name or name[key=value])")
+        key, filter_key, filter_value = match.groups()
+        if filter_value is not None and re.fullmatch(r"-?\d+", filter_value):
+            filter_value = int(filter_value)
+        segments.append(PathSegment(key, filter_key, filter_value))
+    kind = body.get("kind", "value")
+    if kind not in FIELD_KINDS:
+        raise StatsayError(f"fields.{name}: kind must be one of {sorted(FIELD_KINDS)}")
+    numbers = {}
+    for option, default in (("scale", 1), ("offset", 0), ("divide", 1)):
+        value = body.get(option, default)
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or (option == "divide" and value == 0):
+            raise StatsayError(f"fields.{name}: '{option}' must be a number" + (", not 0" if option == "divide" else ""))
+        numbers[option] = value
+    return DerivedField(name, source, tuple(segments), kind, **numbers)
 
 
 def _list(raw, name, required=False):

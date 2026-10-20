@@ -1,9 +1,10 @@
 """Read game data and localization files into a normalized model.
 
-Supported: one data format (a JSON array of objects) and one localization
-format (CSV with a key column and one column per locale). Every loader takes a
-`read` function, so the same code reads the working tree, another directory or
-a Git revision (see revisions.py).
+Data formats: a JSON array of objects, or an RPG Maker MV/MZ database file.
+Localization formats: CSV with a key column and one column per locale, or text
+stored in a data source field (RPG Maker keeps descriptions next to effects).
+Every loader takes a `read` function, so the same code reads the working tree,
+another directory or a Git revision (see revisions.py).
 """
 
 from __future__ import annotations
@@ -43,7 +44,8 @@ class LocString:
     locale: str
     text: str
     file: Path
-    line: int
+    line: int | None          # None for text read from a data file
+    codes: str | None = None  # engine whose control codes to mask, e.g. rpgmaker
 
 
 def load_entities(source: DataSource, read: Reader = read_file, missing_ok: bool = False) -> dict[str, Entity]:
@@ -61,6 +63,8 @@ def load_entities(source: DataSource, read: Reader = read_file, missing_ok: bool
 
     entities = {}
     for index, item in enumerate(data):
+        if source.format == "rpgmaker" and (item is None or item.get("name") == ""):
+            continue  # RPG Maker databases start with null and keep unused, nameless slots
         if not isinstance(item, dict):
             raise StatsayError(f"{source.path}: item {index} is not an object")
         entity_id = item.get(source.entity_id_field)
@@ -97,8 +101,21 @@ def load_strings(source: LocalizationSource, read: Reader = read_file,
             if key in strings:
                 raise StatsayError(f"{source.path}:{reader.line_num}: duplicate key '{key}'")
             strings[key] = {
-                locale: LocString(key, locale, row[locale], source.path, reader.line_num)
+                locale: LocString(key, locale, row[locale], source.path, reader.line_num, source.control_codes)
                 for locale in source.locales
                 if row.get(locale)
             }
+    return strings
+
+
+def load_data_strings(source: LocalizationSource, entities: dict[str, Entity],
+                      data_path: Path) -> dict[str, dict[str, LocString]]:
+    """Text stored in an entity field, keyed by source.key_pattern. Empty text is missing."""
+    [locale] = source.locales
+    strings = {}
+    for entity in entities.values():
+        text = entity.fields.get(source.field)
+        if isinstance(text, str) and text:
+            key = source.key_pattern.replace("{id}", entity.id)
+            strings[key] = {locale: LocString(key, locale, text, data_path, None, source.control_codes)}
     return strings
