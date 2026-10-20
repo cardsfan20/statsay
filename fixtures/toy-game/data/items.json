@@ -78,5 +78,19 @@
     "heal": 10,
     "scope": "single",
     "price": 25
+  },
+  {
+    "id": "panacea",
+    "cures": [
+      "poison",
+      "sleep"
+    ],
+    "scope": "single",
+    "price": 700
+  },
+  {
+    "id": "tent",
+    "battle_use": false,
+    "price": 350
   }
 ]

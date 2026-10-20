@@ -19,5 +19,5 @@ def test_case_matches_expectation(case):
 def test_every_planted_bug_is_in_scope_or_explicitly_deferred():
     planted = [case for case in CASES if case["category"] in ("data_only", "text_only")]
     deferred = [case["id"] for case in planted if not case["planted"]]
-    # D03 (enum scope) and D10 (no claim, diff mode) need M2 rules.
-    assert deferred == ["D03", "D10"]
+    # D10 (no claim, only visible in diff mode) needs watched_field_changed.
+    assert deferred == ["D10"]

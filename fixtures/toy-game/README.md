@@ -6,11 +6,11 @@ Ground truth for evaluation E1 (mutation fixtures) and the test data for M1. A c
 
 | Path | Contents |
 | --- | --- |
-| `data/items.json` | 13 items; watched fields `heal`, `mp`, `duration`, `attack_up`, `revive_percent`, `scope`; unwatched `price` |
+| `data/items.json` | 15 items; watched fields `heal`, `mp`, `duration`, `attack_up`, `revive_percent`, `scope`, `cures` (a list), `battle_use` (a boolean); unwatched `price` |
 | `locales/strings.csv` | `key,en,ja`; names and descriptions, plus one tutorial hint |
 | `statsay.yaml` | Bindings and claim rules in the spec's proposed syntax |
 | `expected/clean.json` | Coverage and findings for the unmutated fixture |
-| `mutations.json` | 10 data-only, 2 text-only and 10 negative-control mutations with expected findings |
+| `mutations.json` | 12 data-only, 3 text-only and 11 negative-control mutations with expected findings |
 
 ## What the clean fixture exercises
 
@@ -27,6 +27,8 @@ Ground truth for evaluation E1 (mutation fixtures) and the test data for M1. A c
 | `ration` | EN quotes the number; JA paraphrases (「少し回復」) |
 | `smoke_bomb` | No numeric fields |
 | `antidote` | Unbound: its key `item.antidote.desc` breaks the convention |
+| `panacea` | List-valued enum (`cures`), like CDDA's materials and ammo types in E2 |
+| `tent` | Boolean flag (`battle_use`) named by a negated phrase, like Mindustry's Retusa in E2 |
 
 ## How to read `expected`
 

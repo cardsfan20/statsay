@@ -19,7 +19,7 @@ def test_clean_fixture_passes_and_reports_coverage(capsys):
     assert code == 0
     payload = json.loads(out.out)
     assert payload["coverage"] == [{
-        "source": "items", "rule": "item.{id}.description", "entities": 13, "bound": 12,
+        "source": "items", "rule": "item.{id}.description", "entities": 15, "bound": 14,
         "unbound": ["items.antidote"],
     }]
     assert payload["summary"] == {"error": 0, "warning": 0, "info": 2}

@@ -1,6 +1,6 @@
-"""Find numbers in a string and tie them to watched fields.
+"""Find claims in a string: numbers tied to watched fields, and vocabulary terms.
 
-Implements the spec's fixed extraction-confidence rule:
+Number claims follow the spec's fixed extraction-confidence rule:
 
 - High: an anchor term of exactly one field is nearest to the number, in the
   same clause, with no other number in between; or the string has exactly one
@@ -44,6 +44,17 @@ class Claim:
     @property
     def field(self) -> str | None:
         return self.fields[0] if len(self.fields) == 1 else None
+
+
+@dataclass(frozen=True)
+class TermClaim:
+    values: dict[str, str]    # field -> enum value key named by the term
+    span: tuple[int, int]     # offsets in the original text
+    confidence: str           # HIGH, or LOW when the term belongs to several fields
+
+    @property
+    def field(self) -> str | None:
+        return next(iter(self.values)) if len(self.values) == 1 else None
 
 
 @dataclass(frozen=True)
@@ -119,6 +130,36 @@ def extract_number_claims(text: str, anchors_by_field: dict[str, tuple[str, ...]
         span = (origin[token.start], origin[token.end - 1] + 1)
         claims.append(Claim(token.value, span, fields, confidence))
     return claims
+
+
+def extract_term_claims(text: str, vocabulary_by_field: dict[str, dict[str, tuple[str, ...]]]) -> list[TermClaim]:
+    """Find vocabulary terms in one string.
+
+    `vocabulary_by_field` maps each enum watched field to {value key: terms}
+    for this string's locale. Where matches overlap, the longest wins, so a
+    negated phrase ("cannot target air") beats the phrase it contains.
+    """
+    norm, origin = normalize(text)
+    by_span: dict[tuple[int, int], dict[str, str]] = {}
+    for field, values in vocabulary_by_field.items():
+        for value, terms in values.items():
+            for term in terms:
+                for match in _anchor_pattern(term).finditer(norm):
+                    by_span.setdefault(match.span(), {})[field] = value
+
+    chosen: list[tuple[int, int]] = []
+    for start, end in sorted(by_span, key=lambda span: (span[0] - span[1], span[0])):
+        if not any(start < other_end and other_start < end for other_start, other_end in chosen):
+            chosen.append((start, end))
+
+    return [
+        TermClaim(
+            values=dict(sorted(by_span[(start, end)].items())),
+            span=(origin[start], origin[end - 1] + 1),
+            confidence=HIGH if len(by_span[(start, end)]) == 1 else LOW,
+        )
+        for start, end in sorted(chosen)
+    ]
 
 
 def _tokens(norm: str) -> list[_Token]:

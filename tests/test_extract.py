@@ -1,4 +1,4 @@
-from statsay.extract import HIGH, LOW, extract_number_claims, normalize
+from statsay.extract import HIGH, LOW, extract_number_claims, extract_term_claims, normalize
 
 HEAL = {"heal": ("HP",)}
 REGEN_EN = {"heal": ("HP",), "duration": ("second", "seconds")}
@@ -69,3 +69,39 @@ def test_normalize_keeps_offsets():
     norm, origin = normalize("ＨＰ５０")
     assert norm == "HP50"
     assert origin == [0, 1, 2, 3, 4]
+
+
+BATTLE_EN = {"battle_use": {"false": ("cannot target air", "cannot be used in battle"),
+                            "true": ("target air", "can be used in battle")}}
+
+
+def terms(text, vocabulary):
+    return [(c.values, c.confidence) for c in extract_term_claims(text, vocabulary)]
+
+
+def test_longest_term_wins_so_negations_beat_the_phrase_they_contain():
+    assert terms("Fires torpedoes. Cannot target air.", BATTLE_EN) == [({"battle_use": "false"}, HIGH)]
+    assert terms("Can target air units.", BATTLE_EN) == [({"battle_use": "true"}, HIGH)]
+
+
+def test_each_term_occurrence_is_a_claim():
+    cures = {"cures": {"poison": ("poison",), "sleep": ("sleep",)}}
+    assert terms("Cures poison and sleep.", cures) == [({"cures": "poison"}, HIGH), ({"cures": "sleep"}, HIGH)]
+
+
+def test_terms_respect_ascii_word_boundaries_but_not_japanese_ones():
+    assert terms("A poisonous brew.", {"cures": {"poison": ("poison",)}}) == []
+    assert terms("毒と睡眠を治す。", {"cures": {"poison": ("毒",), "sleep": ("睡眠",)}}) == [
+        ({"cures": "poison"}, HIGH), ({"cures": "sleep"}, HIGH),
+    ]
+
+
+def test_term_shared_by_two_fields_is_low_confidence():
+    vocabulary = {"element": {"fire": ("fire",)}, "resist": {"fire": ("fire",)}}
+    assert terms("Deals fire damage.", vocabulary) == [({"element": "fire", "resist": "fire"}, LOW)]
+
+
+def test_term_span_points_into_original_text():
+    text = "味方全体のHPを回復"
+    [claim] = extract_term_claims(text, {"scope": {"all_allies": ("味方全体",)}})
+    assert text[claim.span[0]:claim.span[1]] == "味方全体"

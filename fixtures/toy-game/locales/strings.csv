@@ -26,3 +26,7 @@ item.smoke_bomb.description,Lets the party escape from battle.,戦闘から確�
 item.antidote.name,Antidote,毒消し
 item.antidote.desc,Cures poison and restores 10 HP.,毒を治し、HPを10回復する。
 tutorial.potion_hint,Tip: a Potion restores 50 HP.,ヒント：ポーションはHPを50回復する。
+item.panacea.name,Panacea,万能薬
+item.panacea.description,Cures poison and sleep for one ally.,味方単体の毒と睡眠を治す。
+item.tent.name,Tent,テント
+item.tent.description,Fully restores the party. Usable only outside battle.,パーティを全回復する。戦闘中は使えない。

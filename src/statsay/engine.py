@@ -1,7 +1,8 @@
-"""Run the M1 checks on the current revision.
+"""Run the checks on the current revision.
 
-Rules: value_mismatch and locale_value_divergence for numeric claims, plus
-unbound_claim for numbers in bound strings that can't be tied to a field.
+Rules: value_mismatch for numeric claims, enum_term_mismatch for vocabulary
+terms, locale_value_divergence for both, and unbound_claim for numbers in
+bound strings that can't be tied to a field.
 """
 
 from __future__ import annotations
@@ -12,8 +13,8 @@ from pathlib import Path
 from statsay import StatsayError
 from statsay.adapters import load_entities, load_strings
 from statsay.binding import Binding, Coverage, resolve
-from statsay.config import Config
-from statsay.extract import HIGH, Claim, extract_number_claims
+from statsay.config import Config, term_key
+from statsay.extract import HIGH, extract_number_claims, extract_term_claims
 
 ERROR = "error"
 WARNING = "warning"
@@ -30,8 +31,8 @@ class Finding:
     message: str
     locale: str | None = None
     field: str | None = None
-    claimed: int | float | None = None
-    actual: int | float | None = None
+    claimed: object = None  # a number, or an enum value key
+    actual: object = None   # the data value: number, string, bool or list
     value: int | float | None = None
     values: dict | None = None
     text: str | None = None
@@ -79,29 +80,30 @@ def run(config: Config) -> Result:
 
 def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Finding]:
     entity = binding.entity
-    numeric = {
-        name: config.claims[name]
-        for name in binding.watched_fields
-        if name in config.claims and config.claims[name].kind == "number"
-        and _is_number(entity.fields.get(name))
-    }
+    watched = [name for name in binding.watched_fields if name in config.claims]
+    numeric = {name: config.claims[name] for name in watched
+               if config.claims[name].kind == "number" and _is_number(entity.fields.get(name))}
+    enums = {name: config.claims[name] for name in watched
+             if config.claims[name].kind == "enum" and name in entity.fields}
     findings = []
-    claims_by_locale: dict[str, list[Claim]] = {}
+    # locale -> [(field, value, confidence)] for single-field claims, used for divergence
+    claimed: dict[str, list[tuple]] = {}
 
     for locale, loc in by_locale.items():
-        anchors = {name: rule.anchors.get(locale, ()) for name, rule in numeric.items()}
-        claims = extract_number_claims(loc.text, anchors)
-        claims_by_locale[locale] = claims
         base = dict(key=binding.key, entity=entity.ref, locale=locale, text=loc.text,
                     file=_display_path(config, loc.file), line=loc.line)
+        claimed[locale] = []
 
-        for claim in claims:
+        anchors = {name: rule.anchors.get(locale, ()) for name, rule in numeric.items()}
+        for claim in extract_number_claims(loc.text, anchors):
             if not claim.fields:
                 findings.append(Finding(
                     rule="unbound_claim", severity=INFO, value=claim.value, span=claim.span,
                     message=f"number {claim.value} is not tied to any watched field", **base,
                 ))
                 continue
+            if claim.field:
+                claimed[locale].append((claim.field, claim.value, claim.confidence))
             actuals = {name: entity.fields[name] for name in claim.fields}
             if any(_same(claim.value, actual) for actual in actuals.values()):
                 continue
@@ -118,19 +120,44 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Fi
                 message=message, **base,
             ))
 
+        vocabularies = {
+            name: {value: terms.get(locale, ()) for value, terms in rule.vocabulary.items()}
+            for name, rule in enums.items()
+        }
+        for claim in extract_term_claims(loc.text, vocabularies):
+            if claim.field:
+                claimed[locale].append((claim.field, claim.values[claim.field], claim.confidence))
+            if any(value in _term_set(entity.fields[name]) for name, value in claim.values.items()):
+                continue
+            term = loc.text[claim.span[0]:claim.span[1]]
+            if claim.field:
+                actual = entity.fields[claim.field]
+                severity = ERROR if enums[claim.field].validated else WARNING
+                message = (f'{claim.field}: text says {claim.values[claim.field]} ("{term}"), '
+                           f"data says {_display(actual)}")
+            else:
+                actual, severity = None, WARNING
+                message = f'"{term}" matches none of the fields it can name ({", ".join(claim.values)})'
+            findings.append(Finding(
+                rule="enum_term_mismatch", severity=severity, field="|".join(claim.values),
+                claimed="|".join(claim.values.values()), actual=actual, span=claim.span,
+                message=message, **base,
+            ))
+
     first = next(iter(by_locale.values()), None)
-    for name in numeric:
-        high = _values(claims_by_locale, name, high_only=True)
-        every = _values(claims_by_locale, name, high_only=False)
+    for name in [*numeric, *enums]:
+        high = _values(claimed, name, high_only=True)
+        every = _values(claimed, name, high_only=False)
+        hard = name in numeric or enums[name].validated
         if len(high) >= 2 and len(set(high.values())) > 1:
-            severity = ERROR
+            severity = ERROR if hard else WARNING
         elif len(every) >= 2 and len(set(every.values())) > 1:
             severity, high = WARNING, every
         else:
             continue
         values = {locale: (sorted(found)[0] if len(found) == 1 else sorted(found))
                   for locale, found in high.items()}
-        listed = ", ".join(f"{locale} {value}" for locale, value in values.items())
+        listed = ", ".join(f"{locale} {_display(value)}" for locale, value in values.items())
         findings.append(Finding(
             rule="locale_value_divergence", severity=severity, key=binding.key, entity=entity.ref,
             field=name, values=values, message=f"{name}: locales disagree ({listed})",
@@ -139,17 +166,27 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Fi
     return findings
 
 
-def _values(claims_by_locale, name, high_only):
+def _values(claimed, name, high_only):
     """Per locale, the frozen set of values claimed for one field."""
     out = {}
-    for locale, claims in claims_by_locale.items():
-        found = frozenset(
-            claim.value for claim in claims
-            if claim.field == name and (claim.confidence == HIGH or not high_only)
-        )
+    for locale, claims in claimed.items():
+        found = frozenset(value for field, value, confidence in claims
+                          if field == name and (confidence == HIGH or not high_only))
         if found:
             out[locale] = found
     return out
+
+
+def _term_set(value) -> set[str]:
+    """Enum data may be one value or a list (e.g. materials); compare by term_key."""
+    values = value if isinstance(value, list) else [value]
+    return {term_key(item) for item in values}
+
+
+def _display(value) -> str:
+    if isinstance(value, list):
+        return "[" + ", ".join(_display(item) for item in value) + "]"
+    return term_key(value) if isinstance(value, bool) or value is None else str(value)
 
 
 def _is_number(value) -> bool:

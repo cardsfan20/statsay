@@ -50,6 +50,17 @@ class ClaimRule:
     kind: str
     unit: str | None
     anchors: dict[str, tuple[str, ...]]
+    # enum only: value key (see term_key) -> locale -> terms that name that value
+    vocabulary: dict[str, dict[str, tuple[str, ...]]] = None
+    # enum only: a reviewed vocabulary may fail CI; an unreviewed one only warns
+    validated: bool = False
+
+
+def term_key(value) -> str:
+    """Canonical key for an enum value, so YAML `false:` and data `false` match."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return "null" if value is None else str(value)
 
 
 @dataclass(frozen=True)
@@ -152,6 +163,8 @@ def load_config(path: Path) -> Config:
             kind=kind,
             unit=body.get("unit"),
             anchors={str(locale): tuple(str(term) for term in terms) for locale, terms in anchors.items()},
+            vocabulary=_vocabulary(field, body) if kind == "enum" else None,
+            validated=bool(body.get("validated", False)),
         )
 
     return Config(
@@ -187,6 +200,29 @@ def _fields(item, where):
     if not isinstance(fields, list) or not fields:
         raise StatsayError(f"{where}: 'watched_fields' must be a non-empty list")
     return tuple(str(field) for field in fields)
+
+
+def _vocabulary(field, body):
+    raw = body.get("vocabulary")
+    if not isinstance(raw, dict) or not raw:
+        raise StatsayError(f"claims.{field}: kind enum needs a non-empty 'vocabulary' mapping")
+    vocabulary, seen = {}, {}
+    for value, by_locale in raw.items():
+        if not isinstance(by_locale, dict):
+            raise StatsayError(f"claims.{field}.vocabulary.{value}: expected a mapping of locales to lists")
+        key = term_key(value)
+        vocabulary[key] = {}
+        for locale, terms in by_locale.items():
+            if not isinstance(terms, list):
+                raise StatsayError(f"claims.{field}.vocabulary.{value}.{locale}: expected a list of terms")
+            for term in terms:
+                folded = (str(locale), str(term).casefold())
+                if folded in seen and seen[folded] != key:
+                    raise StatsayError(
+                        f"claims.{field}: term '{term}' ({locale}) names both '{seen[folded]}' and '{key}'")
+                seen[folded] = key
+            vocabulary[key][str(locale)] = tuple(str(term) for term in terms)
+    return vocabulary
 
 
 def _check_source(source, data_sources):

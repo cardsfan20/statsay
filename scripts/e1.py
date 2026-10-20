@@ -3,8 +3,8 @@
 Usage:
     python scripts/e1.py fixtures/toy-game
 
-Only M1 rules are scored. Expected findings for later rules (enum_term_mismatch)
-and diff-only findings are counted as out of scope. Exits 0 when Gate 1 holds:
+Implemented rules are scored. Expected findings for rules not built yet, and
+diff-only findings, are counted as out of scope. Exits 0 when Gate 1 holds:
 every planted in-scope bug is found and fails CI, and the clean fixture and
 negative controls produce no unexpected findings.
 """
@@ -22,7 +22,7 @@ import fixture  # noqa: E402  (scripts/fixture.py)
 from statsay.config import load_config  # noqa: E402
 from statsay.engine import run  # noqa: E402
 
-M1_RULES = {"value_mismatch", "locale_value_divergence", "unbound_claim"}
+RULES = {"value_mismatch", "locale_value_divergence", "unbound_claim", "enum_term_mismatch"}
 IDENTITY = ("rule", "severity", "locale", "key", "field", "claimed", "actual", "value", "values")
 
 
@@ -30,15 +30,20 @@ def identity(finding):
     """The fields a finding is matched on; everything else (text, line) is ignored."""
     parts = []
     for name in IDENTITY:
-        value = finding.get(name)
-        if isinstance(value, dict):
-            value = tuple(sorted((k, tuple(v) if isinstance(v, list) else v) for k, v in value.items()))
-        parts.append(value)
+        parts.append(_hashable(finding.get(name)))
     return tuple(parts)
 
 
+def _hashable(value):
+    if isinstance(value, dict):
+        return tuple(sorted((k, _hashable(v)) for k, v in value.items()))
+    if isinstance(value, list):
+        return tuple(_hashable(v) for v in value)
+    return value
+
+
 def in_scope(expected):
-    return expected["rule"] in M1_RULES and not expected.get("diff_only")
+    return expected["rule"] in RULES and not expected.get("diff_only")
 
 
 def run_on(directory):
@@ -83,7 +88,7 @@ def score(case):
 
 
 def evaluate(fixture_dir):
-    rows, per_rule = [], {rule: Counter() for rule in sorted(M1_RULES)}
+    rows, per_rule = [], {rule: Counter() for rule in sorted(RULES)}
     total_checked, unexpected_alerts, failures = 0, 0, []
 
     for case in cases(fixture_dir):

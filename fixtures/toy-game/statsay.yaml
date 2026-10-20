@@ -15,7 +15,7 @@ localization:
 bindings:
   - convention: "item.{id}.description"
     source: items
-    watched_fields: [heal, mp, duration, attack_up, revive_percent, scope]
+    watched_fields: [heal, mp, duration, attack_up, revive_percent, scope, cures, battle_use]
   - explicit:                       # exception
       entity: items.potion
       keys: [tutorial.potion_hint]
@@ -45,3 +45,14 @@ claims:
     vocabulary:
       single:     { en: ["one ally"],  ja: ["味方単体", "味方1人"] }
       all_allies: { en: ["all allies"], ja: ["味方全体"] }
+  cures:                            # list-valued in the data
+    kind: enum
+    vocabulary:
+      poison:  { en: ["poison"],  ja: ["毒"] }
+      sleep:   { en: ["sleep"],   ja: ["睡眠"] }
+      silence: { en: ["silence"], ja: ["沈黙"] }
+  battle_use:                       # boolean flag; negated phrases win over the phrases they contain
+    kind: enum
+    vocabulary:
+      false: { en: ["only outside battle", "cannot be used in battle"], ja: ["戦闘中は使えない"] }
+      true:  { en: ["usable in battle", "can be used in battle"], ja: ["戦闘中も使える", "戦闘中に使える"] }
