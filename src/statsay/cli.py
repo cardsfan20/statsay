@@ -4,12 +4,14 @@
                   [--format text|json|summary|sarif|agent|patch] [--sarif FILE] [--summary FILE]
     statsay baseline [PATH] [--output FILE]
     statsay flag [PATH] [--base-ref REV | --base DIR] [--changed-only] [--baseline FILE] [--review-file FILE]
+    statsay init [DIR] [--output FILE] [--force]
 
 `check` exit codes: 0 no new findings at or above --fail-on, 1 such findings
 exist, 2 configuration or input error. `baseline` records the current findings
 as reviewed (run it after the first audit). `flag` is opt-in write-back: it
 marks affected PO entries fuzzy with a comment and lists other findings in a
-review file; it never edits translated text.
+review file; it never edits translated text. `init` looks at a project and
+writes a starter statsay.yaml, then runs a first check.
 """
 
 from __future__ import annotations
@@ -54,9 +56,17 @@ def main(argv: list[str] | None = None) -> None:
     _filters(flag)
     flag.add_argument("--review-file", metavar="FILE",
                       help=f"sidecar for non-PO findings (default: {REVIEW_NAME} next to the config)")
+    start = commands.add_parser("init", help="write a starter statsay.yaml for a project")
+    start.add_argument("path", nargs="?", default=".", help="project directory")
+    start.add_argument("--output", metavar="FILE", help="where to write (default: statsay.yaml in the project)")
+    start.add_argument("--force", action="store_true", help="overwrite an existing file")
     args = parser.parse_args(argv)
 
     sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # LF on Windows too, so patches apply
+    if args.command == "init":
+        _init(args)
+        return
+
     try:
         config = load_config(args.path)
         reader = None
@@ -103,6 +113,35 @@ def main(argv: list[str] | None = None) -> None:
         threshold = SEVERITY_ORDER[args.fail_on]
         if any(SEVERITY_ORDER[f.severity] >= threshold for f in result.findings):
             sys.exit(1)
+
+
+def _init(args) -> None:
+    from statsay.init import init, render
+    from statsay.report import summary
+
+    try:
+        output = Path(args.output) if args.output else Path(args.path) / "statsay.yaml"
+        if output.exists() and not args.force:
+            raise StatsayError(f"{output} already exists (use --force to overwrite)")
+        plan = init(Path(args.path))
+        output.write_text(render(plan), encoding="utf-8", newline="\n")
+        result = run(load_config(output))
+    except StatsayError as error:
+        print(f"statsay: error: {error}", file=sys.stderr)
+        sys.exit(2)
+    print(f"statsay init: {plan.kind}; locales: {', '.join(plan.locales)}")
+    for note in plan.notes:
+        print(f"  {note}")
+    for name, anchors in plan.anchors.items():
+        print(f"  field {name}: anchors {', '.join(anchors) if anchors else '(none found)'}")
+    for name, claim in plan.raw["claims"].items():
+        if claim["kind"] == "enum":
+            print(f"  terms {name}: {sum(len(t) for v in claim['vocabulary'].values() for t in v.values())} "
+                  f"in the vocabulary")
+    counts = summary(result)
+    print(f"wrote {output}")
+    print(f"first check: {counts['error']} errors, {counts['warning']} warnings, {counts['info']} info "
+          f"on {result.stats['checked']} strings. Next: `statsay check --format summary` to review.")
 
 
 def _filters(command):

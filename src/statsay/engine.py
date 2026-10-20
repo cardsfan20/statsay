@@ -221,7 +221,8 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
 
         anchors = {name: rule.anchors.get(locale, ()) for name, rule in numeric.items()}
         codes = CONTROL_CODES.get(loc.codes)
-        for claim in extract_number_claims(loc.text, anchors, codes):
+        percent = {name for name, rule in numeric.items() if rule.unit == "percent"}
+        for claim in extract_number_claims(loc.text, anchors, codes, percent):
             if not claim.fields:
                 if tracks_numbers:
                     findings.append(Finding(

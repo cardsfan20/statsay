@@ -52,7 +52,7 @@ class PathSegment:
 class DerivedField:
     """A field read from nested data, e.g. effects[code=11].value2, with fixed transforms."""
     name: str
-    source: str
+    sources: tuple[str, ...]          # data sources it applies to (`source:` takes one id or a list)
     path: tuple[PathSegment, ...]
     kind: str = "value"               # "formula": never evaluated, only watched for changes
     scale: float = 1
@@ -126,8 +126,12 @@ def load_config(path: Path) -> Config:
         raise StatsayError(f"{config_path}: invalid YAML: {error}") from None
     if not isinstance(raw, dict):
         raise StatsayError(f"{config_path}: expected a mapping at the top level")
-    root = config_path.parent
+    return build_config(raw, config_path.parent)
 
+
+def build_config(raw: dict, root: Path) -> Config:
+    """A Config from an already-parsed statsay.yaml mapping; relative paths resolve against `root`."""
+    root = Path(root)
     data_sources = {}
     for item in _list(raw, "data_sources", required=True):
         fmt = item.get("format", "json")
@@ -258,8 +262,12 @@ def _localization(item, root, data_sources):
 def _derived_field(name, body, data_sources):
     if not isinstance(body, dict):
         raise StatsayError(f"fields.{name}: expected a mapping")
-    source = _str(body, "source", f"fields.{name}")
-    _check_source(source, data_sources)
+    raw_sources = body.get("source")
+    sources = tuple(raw_sources) if isinstance(raw_sources, list) else (raw_sources,)
+    if not sources or not all(isinstance(s, str) and s for s in sources):
+        raise StatsayError(f"fields.{name}: 'source' must be a data source id or a list of them")
+    for source in sources:
+        _check_source(source, data_sources)
     segments = []
     for part in _str(body, "path", f"fields.{name}").split("."):
         match = PATH_SEGMENT_RE.match(part)
@@ -278,7 +286,7 @@ def _derived_field(name, body, data_sources):
         if not isinstance(value, (int, float)) or isinstance(value, bool) or (option == "divide" and value == 0):
             raise StatsayError(f"fields.{name}: '{option}' must be a number" + (", not 0" if option == "divide" else ""))
         numbers[option] = value
-    return DerivedField(name, source, tuple(segments), kind, **numbers)
+    return DerivedField(name, sources, tuple(segments), kind, **numbers)
 
 
 def _list(raw, name, required=False):

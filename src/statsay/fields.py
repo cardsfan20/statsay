@@ -1,8 +1,8 @@
 """Derived fields: values read from nested data by path, with fixed transforms.
 
 A path like `effects[code=11].value2` walks into `effects`, keeps the list
-elements whose `code` is 11, and reads `value2`. No match leaves the field
-absent; several matches give a list. Numeric values are transformed as
+elements whose `code` is 11, and reads `value2`. A number segment indexes a
+list (`params.2`). No match leaves the field absent; several matches give a list. Numeric values are transformed as
 (value * scale + offset) / divide. Formula fields are copied, never evaluated.
 """
 
@@ -16,7 +16,7 @@ _ABSENT = object()
 
 def apply_derived(config: Config, source_id: str, entities: dict[str, Entity]) -> None:
     """Set each derived field on the source's entities, in place."""
-    derived = [field for field in config.fields.values() if field.source == source_id]
+    derived = [field for field in config.fields.values() if source_id in field.sources]
     for entity in entities.values():
         for field in derived:
             value = derive(entity.fields, field)
@@ -31,6 +31,10 @@ def derive(obj: dict, field: DerivedField):
     for segment in field.path:
         found = []
         for item in current:
+            if isinstance(item, list) and segment.key.isdigit() and segment.filter_key is None:
+                if int(segment.key) < len(item):
+                    found.append(item[int(segment.key)])
+                continue
             if not isinstance(item, dict) or segment.key not in item:
                 continue
             value = item[segment.key]

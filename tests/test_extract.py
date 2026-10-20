@@ -32,7 +32,8 @@ def test_nearest_anchor_wins_between_two_fields():
 
 def test_equal_distance_to_two_fields_is_a_low_confidence_tie():
     anchors = {"attack_up": ("%",), "revive_percent": ("%",)}
-    assert summary("Grants 20% now.", anchors) == [(20, ("attack_up", "revive_percent"), LOW)]
+    claims = extract_number_claims("Grants 20% now.", anchors, percent_fields={"attack_up", "revive_percent"})
+    assert [(c.value, c.fields, c.confidence) for c in claims] == [(20, ("attack_up", "revive_percent"), LOW)]
 
 
 def test_number_in_a_name_is_not_tied_when_another_number_sits_between():
@@ -155,3 +156,29 @@ def test_contrast_cue_after_a_term_for_japanese_word_order():
     claims = extract_term_claims(text, MATERIAL, contrast=CONTRAST_JA)
     assert [c.values for c in claims] == [{"material": "nylon"}]
     assert len(extract_term_claims(text, MATERIAL)) == 2  # without cues, both terms count
+
+
+def test_anchor_inside_a_longer_anchor_of_another_field_does_not_count():
+    anchors = {"heal": ("HP",), "grow": ("最大HP",)}
+    assert summary("最大HPが50上がる。", anchors) == [(50, ("grow",), HIGH)]
+    assert summary("HPを50回復する。", anchors) == [(50, ("heal",), HIGH)]
+
+
+def test_label_joined_by_a_separator_owns_the_number():
+    anchors = {"mat": ("WIS",), "agi": ("SPD",)}
+    assert summary("STR+5 WIS+5 SPD+20", anchors) == [(5, (), None), (5, ("mat",), HIGH), (20, ("agi",), HIGH)]
+    assert summary("防御力：40 知識力：25 正確性：5", {"def": ("防御力",), "mdf": ("知識力",), "luk": ("正確性",)}) == [
+        (40, ("def",), HIGH), (25, ("mdf",), HIGH), (5, ("luk",), HIGH)]
+
+
+def test_percent_numbers_only_match_percent_fields():
+    anchors = {"mp": ("MP",), "mp_rate": ("MP",)}
+    claims = extract_number_claims("Restores MP+35% for one ally.", anchors, percent_fields={"mp_rate"})
+    assert [(c.value, c.field) for c in claims] == [(35, "mp_rate")]
+    claims = extract_number_claims("MPを50回復する。", anchors, percent_fields={"mp_rate"})
+    assert [(c.value, c.field) for c in claims] == [(50, "mp")]
+    assert summary("攻撃力：15%", {"atk": ("攻撃力",)}) == [(15, (), None)]  # a percent bonus, not the flat stat
+
+
+def test_formula_multipliers_are_low_confidence():
+    assert summary("(魔法攻撃*20+幸運*10) MPを回復", {"mp": ("MP",)}) == [(20, (), None), (10, ("mp",), LOW)]

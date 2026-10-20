@@ -1,0 +1,37 @@
+{
+  "advanced": {
+    "gameId": 0,
+    "screenWidth": 816,
+    "screenHeight": 624
+  },
+  "gameTitle": "Statsay Fixture",
+  "locale": "ja_JP",
+  "terms": {
+    "basic": [
+      "レベル",
+      "Lv",
+      "ＨＰ",
+      "HP",
+      "ＭＰ",
+      "MP",
+      "ＴＰ",
+      "TP",
+      "経験値",
+      "EXP"
+    ],
+    "params": [
+      "最大ＨＰ",
+      "最大ＭＰ",
+      "攻撃力",
+      "防御力",
+      "魔法力",
+      "魔法防御",
+      "敏捷性",
+      "運",
+      "命中率",
+      "回避率"
+    ],
+    "commands": [],
+    "messages": {}
+  }
+}
