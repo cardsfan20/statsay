@@ -55,8 +55,10 @@ def render_text(result: Result) -> str:
     counts = summary(result)
     if result.findings:
         lines.append("")
+    baselined = result.stats.get("baselined")
     lines.append(
         f"{counts[ERROR]} errors, {counts[WARNING]} warnings, {counts[INFO]} info "
-        f"({result.stats['checked']} bound strings checked)"
+        f"({result.stats['checked']} bound strings checked"
+        f"{f'; {baselined} baselined findings suppressed' if baselined else ''})"
     )
     return "\n".join(lines) + "\n"

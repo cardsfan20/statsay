@@ -11,7 +11,9 @@ which make no claim about that field.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+import json
+from dataclasses import dataclass, field, fields
+from dataclasses import field as dataclass_field  # `field` is shadowed inside Finding
 from pathlib import Path
 
 from statsay import StatsayError
@@ -20,6 +22,7 @@ from statsay.binding import Binding, Coverage, resolve
 from statsay.config import Config, term_key
 from statsay.extract import CONTROL_CODES, HIGH, extract_number_claims, extract_term_claims
 from statsay.fields import apply_derived
+from statsay.locate import FileCache, format_like, locate
 
 ERROR = "error"
 WARNING = "warning"
@@ -46,9 +49,21 @@ class Finding:
     span: tuple[int, int] | None = None
     file: str | None = None
     line: int | None = None
+    column: int | None = None
+    fix: dict | None = None  # suggested replacement: file, line, column, end_line, end_column, old, new
+    source: Path | None = dataclass_field(default=None, repr=False)  # absolute path of `file`; not serialized
 
     def to_dict(self) -> dict:
-        return {name: value for name, value in asdict(self).items() if value is not None}
+        out = {f.name: getattr(self, f.name) for f in fields(self) if f.name != "source"}
+        if self.fix:
+            out["fix"] = {k: v for k, v in self.fix.items() if k not in ("path", "offset")}
+        return {name: value for name, value in out.items() if value is not None}
+
+    def fingerprint(self) -> str:
+        """Stable identity for baselines and SARIF: what is claimed where, not line numbers."""
+        parts = (self.rule, self.key, self.locale, self.field, self.claimed, self.actual, self.text)
+        return "|".join("" if part is None else json.dumps(part, ensure_ascii=False, sort_keys=True)
+                        for part in parts)
 
 
 @dataclass
@@ -57,6 +72,10 @@ class Result:
     findings: list[Finding]
     diagnostics: list[str]
     stats: dict = field(default_factory=dict)
+    # diff mode only: key -> {field: (old, new)} for watched fields that changed
+    changes: dict[str, dict] = field(default_factory=dict)
+    # diff mode only: keys whose entity, watched fields or text changed (or are new)
+    changed_keys: set[str] = field(default_factory=set)
 
 
 def run(config: Config, base: Reader | None = None) -> Result:
@@ -67,6 +86,8 @@ def run(config: Config, base: Reader | None = None) -> Result:
 
     bindings, coverage, diagnostics = resolve(config, entities, strings)
     findings: list[Finding] = []
+    changes: dict[str, dict] = {}
+    changed_keys: set[str] = set()
     checked = 0
     for binding in bindings:
         checked += len(strings[binding.key])
@@ -74,8 +95,17 @@ def run(config: Config, base: Reader | None = None) -> Result:
         findings.extend(binding_findings)
         if base is not None:
             base_entity = base_entities.get(binding.entity.source, {}).get(binding.entity.id)
+            base_by_locale = base_strings.get(binding.key, {})
+            changed = _field_changes(binding, base_entity)
+            if changed:
+                changes[binding.key] = changed
+            if base_entity is None or changed or any(
+                    base_by_locale.get(locale) is None or base_by_locale[locale].text != loc.text
+                    for locale, loc in strings[binding.key].items()):
+                changed_keys.add(binding.key)
             findings.extend(_check_changes(config, binding, strings[binding.key], claimed_fields,
-                                           base_entity, base_strings.get(binding.key, {})))
+                                           changed, base_by_locale))
+    _attach_locations(findings)
 
     findings.sort(key=lambda f: (f.file or "", f.line or 0, f.key, f.locale or "", f.rule))
     stats = {
@@ -84,7 +114,41 @@ def run(config: Config, base: Reader | None = None) -> Result:
         "bindings": len(bindings),
         "checked": checked,
     }
-    return Result(coverage, findings, diagnostics, stats)
+    return Result(coverage, findings, diagnostics, stats, changes, changed_keys)
+
+
+def _attach_locations(findings: list[Finding]) -> None:
+    """Fill in line/column from the source file, and a fix for confident numeric mismatches."""
+    cache = FileCache()
+    for finding in findings:
+        if finding.source is None or finding.text is None or finding.span is None:
+            continue
+        location = locate(cache, finding.source, finding.line, finding.text, finding.span)
+        if location is None:
+            continue
+        finding.line, finding.column = location.line, location.column
+        if finding.rule == "value_mismatch" and finding.severity == ERROR and _is_number(finding.actual):
+            original = finding.text[finding.span[0]:finding.span[1]]
+            finding.fix = {
+                "file": finding.file, "line": location.line, "column": location.column,
+                "end_line": location.end_line, "end_column": location.end_column,
+                "old": cache.text(location.file)[location.start:location.end],
+                "new": format_like(original, finding.actual),
+                "path": str(location.file), "offset": location.start,
+            }
+
+
+def _field_changes(binding, base_entity) -> dict:
+    """Watched fields whose value differs from the base revision: {field: (old, new)}."""
+    if base_entity is None:
+        return {}
+    missing = object()
+    out = {}
+    for name in binding.watched_fields:
+        old, new = base_entity.fields.get(name, missing), binding.entity.fields.get(name, missing)
+        if old != new:
+            out[name] = (None if old is missing else old, None if new is missing else new)
+    return out
 
 
 def _load(config: Config, read: Reader | None = None, missing_ok: bool = False):
@@ -107,16 +171,12 @@ def _load(config: Config, read: Reader | None = None, missing_ok: bool = False):
     return entities, strings
 
 
-def _check_changes(config, binding, by_locale, claimed_fields, base_entity, base_by_locale) -> list[Finding]:
-    """watched_field_changed: data moved, the text didn't, and the text states nothing about it."""
-    if base_entity is None:
-        return []  # a new entity; its strings were written against the current data
-    missing = object()
-    changed = {
-        name: (base_entity.fields.get(name, missing), binding.entity.fields.get(name, missing))
-        for name in binding.watched_fields
-        if base_entity.fields.get(name, missing) != binding.entity.fields.get(name, missing)
-    }
+def _check_changes(config, binding, by_locale, claimed_fields, changed, base_by_locale) -> list[Finding]:
+    """watched_field_changed: data moved, the text didn't, and the text states nothing about it.
+
+    `changed` comes from _field_changes; a new entity has none, since its strings
+    were written against the current data.
+    """
     findings = []
     for locale, loc in by_locale.items():
         base_loc = base_by_locale.get(locale)
@@ -125,11 +185,10 @@ def _check_changes(config, binding, by_locale, claimed_fields, base_entity, base
         for name, (old, new) in changed.items():
             if name in claimed_fields.get(locale, set()):
                 continue
-            old, new = (None if v is missing else v for v in (old, new))
             findings.append(Finding(
                 rule="watched_field_changed", severity=WARNING, key=binding.key, entity=binding.entity.ref,
                 locale=locale, field=name, old=old, new=new, text=loc.text,
-                file=_display_path(config, loc.file), line=loc.line,
+                file=_display_path(config, loc.file), line=loc.line, source=loc.file,
                 message=f"{name} changed {_display(old)} -> {_display(new)}; "
                         f"this text did not change and states no value for it",
             ))
@@ -153,7 +212,7 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
 
     for locale, loc in by_locale.items():
         base = dict(key=binding.key, entity=entity.ref, locale=locale, text=loc.text,
-                    file=_display_path(config, loc.file), line=loc.line)
+                    file=_display_path(config, loc.file), line=loc.line, source=loc.file)
         claimed[locale] = []
         claimed_fields[locale] = set()
 

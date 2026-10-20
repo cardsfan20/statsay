@@ -44,7 +44,7 @@ class LocString:
     locale: str
     text: str
     file: Path
-    line: int | None          # None for text read from a data file
+    line: int | None          # first line of the CSV row; None for text read from a data file
     codes: str | None = None  # engine whose control codes to mask, e.g. rpgmaker
 
 
@@ -94,14 +94,16 @@ def load_strings(source: LocalizationSource, read: Reader = read_file,
         missing = [column for column in (source.key_column, *source.locales) if column not in header]
         if missing:
             raise StatsayError(f"{source.path}: missing columns {missing}")
+        row_end = reader.line_num
         for row in reader:
+            row_start, row_end = row_end + 1, reader.line_num  # a quoted cell may span several lines
             key = (row.get(source.key_column) or "").strip()
             if not key:
                 continue
             if key in strings:
-                raise StatsayError(f"{source.path}:{reader.line_num}: duplicate key '{key}'")
+                raise StatsayError(f"{source.path}:{row_start}: duplicate key '{key}'")
             strings[key] = {
-                locale: LocString(key, locale, row[locale], source.path, reader.line_num, source.control_codes)
+                locale: LocString(key, locale, row[locale], source.path, row_start, source.control_codes)
                 for locale in source.locales
                 if row.get(locale)
             }
