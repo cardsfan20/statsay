@@ -1,0 +1,28 @@
+key,en,ja
+item.potion.name,Potion,ポーション
+item.potion.description,Restores 50 HP to one ally.,味方単体のHPを50回復する。
+item.hi_potion.name,Hi-Potion,ハイポーション
+item.hi_potion.description,Restores 150 HP to one ally.,味方単体のHPを１５０回復する。
+item.mega_potion.name,Mega Potion,メガポーション
+item.mega_potion.description,Restores 100 HP to all allies.,味方全体のHPを100回復する。
+item.ether.name,Ether,エーテル
+item.ether.description,Restores 30 MP to one ally.,味方単体のMPを30回復する。
+item.group_ether.name,Group Ether,グループエーテル
+item.group_ether.description,Restores 20 MP to all allies.,味方全体のMPを20回復する。
+item.brew.name,Level 3 Brew,レベル3の薬湯
+item.brew.description,A Level 3 brew that restores 80 HP to one ally.,レベル3の薬湯。味方単体のHPを80回復する。
+item.regen_tonic.name,Regen Tonic,リジェネトニック
+item.regen_tonic.description,Restores 5 HP per second for 10 seconds.,10秒間、毎秒HPを5回復する。
+item.power_draught.name,Power Draught,力の秘薬
+item.power_draught.description,Raises attack by 20% for 30 seconds.,30秒間、攻撃力を20％上げる。
+item.revival_feather.name,Revival Feather,復活の羽
+item.revival_feather.description,Revives a fallen ally with 25% HP.,戦闘不能の味方をHP25%で蘇生する。
+item.elixir.name,Elixir,エリクサー
+item.elixir.description,Fully restores HP and MP of one ally.,味方単体のHPとMPを全回復する。
+item.ration.name,Ration,携帯食
+item.ration.description,Restores 20 HP.,HPを少し回復する。
+item.smoke_bomb.name,Smoke Bomb,けむり玉
+item.smoke_bomb.description,Lets the party escape from battle.,戦闘から確実に逃げられる。
+item.antidote.name,Antidote,毒消し
+item.antidote.desc,Cures poison and restores 10 HP.,毒を治し、HPを10回復する。
+tutorial.potion_hint,Tip: a Potion restores 50 HP.,ヒント：ポーションはHPを50回復する。

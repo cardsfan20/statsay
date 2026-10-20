@@ -1,0 +1,82 @@
+[
+  {
+    "id": "potion",
+    "heal": 50,
+    "scope": "single",
+    "price": 30
+  },
+  {
+    "id": "hi_potion",
+    "heal": 150,
+    "scope": "single",
+    "price": 120
+  },
+  {
+    "id": "mega_potion",
+    "heal": 100,
+    "scope": "all_allies",
+    "price": 400
+  },
+  {
+    "id": "ether",
+    "mp": 30,
+    "scope": "single",
+    "price": 200
+  },
+  {
+    "id": "group_ether",
+    "mp": 20,
+    "scope": "all_allies",
+    "price": 600
+  },
+  {
+    "id": "brew",
+    "heal": 80,
+    "scope": "single",
+    "price": 90
+  },
+  {
+    "id": "regen_tonic",
+    "heal": 5,
+    "duration": 10,
+    "scope": "single",
+    "price": 150
+  },
+  {
+    "id": "power_draught",
+    "attack_up": 20,
+    "duration": 30,
+    "scope": "single",
+    "price": 250
+  },
+  {
+    "id": "revival_feather",
+    "revive_percent": 25,
+    "scope": "single",
+    "price": 500
+  },
+  {
+    "id": "elixir",
+    "heal": 9999,
+    "mp": 999,
+    "scope": "single",
+    "price": 3000
+  },
+  {
+    "id": "ration",
+    "heal": 20,
+    "scope": "single",
+    "price": 10
+  },
+  {
+    "id": "smoke_bomb",
+    "scope": "none",
+    "price": 40
+  },
+  {
+    "id": "antidote",
+    "heal": 10,
+    "scope": "single",
+    "price": 25
+  }
+]

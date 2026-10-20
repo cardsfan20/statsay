@@ -1,0 +1,2 @@
+# Fixtures are compared byte for byte; keep them LF on every platform.
+* text=auto eol=lf

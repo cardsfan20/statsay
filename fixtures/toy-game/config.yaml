@@ -1,0 +1,47 @@
+# Tool configuration for the toy game, in the syntax proposed by the spec
+# ("Binding by convention"). The `localization` block is not in the spec yet.
+
+data_sources:
+  - id: items
+    path: data/items.json
+    entity_id_field: id
+
+localization:
+  - path: locales/strings.csv
+    format: csv
+    key_column: key
+    locales: [en, ja]
+
+bindings:
+  - convention: "item.{id}.description"
+    source: items
+    watched_fields: [heal, mp, duration, attack_up, revive_percent, scope]
+  - explicit:                       # exception
+      entity: items.potion
+      keys: [tutorial.potion_hint]
+      watched_fields: [heal]
+
+claims:
+  heal:
+    kind: number
+    anchors: { en: ["HP"], ja: ["HP"] }
+  mp:
+    kind: number
+    anchors: { en: ["MP"], ja: ["MP"] }
+  duration:
+    kind: number
+    unit: seconds
+    anchors: { en: ["second", "seconds"], ja: ["秒"] }
+  attack_up:
+    kind: number
+    unit: percent
+    anchors: { en: ["%"], ja: ["%"] }
+  revive_percent:
+    kind: number
+    unit: percent
+    anchors: { en: ["%"], ja: ["%"] }
+  scope:
+    kind: enum
+    vocabulary:
+      single:     { en: ["one ally"],  ja: ["味方単体", "味方1人"] }
+      all_allies: { en: ["all allies"], ja: ["味方全体"] }

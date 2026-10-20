@@ -1,0 +1,242 @@
+[
+  {
+    "id": "D01",
+    "category": "data_only",
+    "summary": "Potion heal lowered; description and explicitly bound tutorial hint both go stale",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "potion", "field": "heal", "from": 50, "to": 40 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.potion.description", "field": "heal", "claimed": 50, "actual": 40 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.potion.description", "field": "heal", "claimed": 50, "actual": 40 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "tutorial.potion_hint", "field": "heal", "claimed": 50, "actual": 40 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "tutorial.potion_hint", "field": "heal", "claimed": 50, "actual": 40 }
+    ]
+  },
+  {
+    "id": "D02",
+    "category": "data_only",
+    "summary": "Hi-Potion heal raised; the JA text uses full-width digits",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "hi_potion", "field": "heal", "from": 150, "to": 160 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.hi_potion.description", "field": "heal", "claimed": 150, "actual": 160 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.hi_potion.description", "field": "heal", "claimed": 150, "actual": 160 }
+    ]
+  },
+  {
+    "id": "D03",
+    "category": "data_only",
+    "summary": "Mega Potion scope narrowed from all allies to one ally",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "mega_potion", "field": "scope", "from": "all_allies", "to": "single" }
+    ],
+    "expected": [
+      { "rule": "enum_term_mismatch", "severity": "warning", "locale": "en", "key": "item.mega_potion.description", "field": "scope", "claimed": "all_allies", "actual": "single" },
+      { "rule": "enum_term_mismatch", "severity": "warning", "locale": "ja", "key": "item.mega_potion.description", "field": "scope", "claimed": "all_allies", "actual": "single" }
+    ]
+  },
+  {
+    "id": "D04",
+    "category": "data_only",
+    "summary": "Brew heal raised; the '3' in 'Level 3' must not be read as the heal claim",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "brew", "field": "heal", "from": 80, "to": 90 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.brew.description", "field": "heal", "claimed": 80, "actual": 90 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.brew.description", "field": "heal", "claimed": 80, "actual": 90 }
+    ]
+  },
+  {
+    "id": "D05",
+    "category": "data_only",
+    "summary": "Regen Tonic duration shortened; two numbers per string, assigned by nearest anchor",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "regen_tonic", "field": "duration", "from": 10, "to": 8 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.regen_tonic.description", "field": "duration", "claimed": 10, "actual": 8 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.regen_tonic.description", "field": "duration", "claimed": 10, "actual": 8 }
+    ]
+  },
+  {
+    "id": "D06",
+    "category": "data_only",
+    "summary": "Regen Tonic heal raised; 'per second' sits near the heal number but HP is nearer",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "regen_tonic", "field": "heal", "from": 5, "to": 6 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.regen_tonic.description", "field": "heal", "claimed": 5, "actual": 6 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.regen_tonic.description", "field": "heal", "claimed": 5, "actual": 6 }
+    ]
+  },
+  {
+    "id": "D07",
+    "category": "data_only",
+    "summary": "Power Draught attack bonus raised; the JA text uses a full-width percent sign",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "power_draught", "field": "attack_up", "from": 20, "to": 25 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.power_draught.description", "field": "attack_up", "claimed": 20, "actual": 25 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.power_draught.description", "field": "attack_up", "claimed": 20, "actual": 25 }
+    ]
+  },
+  {
+    "id": "D08",
+    "category": "data_only",
+    "summary": "Revival Feather revive percentage doubled",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "revival_feather", "field": "revive_percent", "from": 25, "to": 50 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.revival_feather.description", "field": "revive_percent", "claimed": 25, "actual": 50 },
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.revival_feather.description", "field": "revive_percent", "claimed": 25, "actual": 50 }
+    ]
+  },
+  {
+    "id": "D09",
+    "category": "data_only",
+    "summary": "Ration heal raised; EN quotes the number, JA paraphrases ('a little') so only diff mode flags it",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "ration", "field": "heal", "from": 20, "to": 25 }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.ration.description", "field": "heal", "claimed": 20, "actual": 25 },
+      { "rule": "watched_field_changed", "severity": "warning", "locale": "ja", "key": "item.ration.description", "field": "heal", "old": 20, "new": 25, "diff_only": true }
+    ]
+  },
+  {
+    "id": "D10",
+    "category": "data_only",
+    "summary": "Elixir heal cut; 'Fully restores' is now wrong but contains no number (narrow AI judge case)",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "elixir", "field": "heal", "from": 9999, "to": 5000 }
+    ],
+    "expected": [
+      { "rule": "watched_field_changed", "severity": "warning", "locale": "en", "key": "item.elixir.description", "field": "heal", "old": 9999, "new": 5000, "diff_only": true },
+      { "rule": "watched_field_changed", "severity": "warning", "locale": "ja", "key": "item.elixir.description", "field": "heal", "old": 9999, "new": 5000, "diff_only": true }
+    ]
+  },
+  {
+    "id": "T01",
+    "category": "text_only",
+    "summary": "EN Hi-Potion text edited to a wrong value; JA and data unchanged",
+    "edits": [
+      { "op": "set_text", "file": "locales/strings.csv", "key": "item.hi_potion.description", "locale": "en", "from": "Restores 150 HP to one ally.", "to": "Restores 160 HP to one ally." }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "en", "key": "item.hi_potion.description", "field": "heal", "claimed": 160, "actual": 150 },
+      { "rule": "locale_value_divergence", "severity": "error", "locale": null, "key": "item.hi_potion.description", "field": "heal", "values": { "en": 160, "ja": 150 } }
+    ]
+  },
+  {
+    "id": "T02",
+    "category": "text_only",
+    "summary": "JA Regen Tonic duration edited to a wrong value; EN and data unchanged",
+    "edits": [
+      { "op": "set_text", "file": "locales/strings.csv", "key": "item.regen_tonic.description", "locale": "ja", "from": "10秒間、毎秒HPを5回復する。", "to": "8秒間、毎秒HPを5回復する。" }
+    ],
+    "expected": [
+      { "rule": "value_mismatch", "severity": "error", "locale": "ja", "key": "item.regen_tonic.description", "field": "duration", "claimed": 8, "actual": 10 },
+      { "rule": "locale_value_divergence", "severity": "error", "locale": null, "key": "item.regen_tonic.description", "field": "duration", "values": { "en": 10, "ja": 8 } }
+    ]
+  },
+  {
+    "id": "N01",
+    "category": "negative",
+    "summary": "Unwatched field (price) changed",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "potion", "field": "price", "from": 30, "to": 35 }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N02",
+    "category": "negative",
+    "summary": "Whitespace-only text edit",
+    "edits": [
+      { "op": "set_text", "file": "locales/strings.csv", "key": "item.potion.description", "locale": "en", "from": "Restores 50 HP to one ally.", "to": "Restores 50 HP  to one ally. " }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N03",
+    "category": "negative",
+    "summary": "Watched field changed on an unbound entity (antidote's key breaks the convention)",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "antidote", "field": "heal", "from": 10, "to": 15 }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N04",
+    "category": "negative",
+    "summary": "Unrelated field added to an entity",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "potion", "field": "rarity", "from": null, "to": "common" }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N05",
+    "category": "negative",
+    "summary": "Entity order changed in the data file",
+    "edits": [
+      { "op": "move_entity", "file": "data/items.json", "entity": "potion", "to_index": -1 }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N06",
+    "category": "negative",
+    "summary": "Data file reformatted (indent 2 to 4)",
+    "edits": [
+      { "op": "reformat_json", "file": "data/items.json", "indent": 4 }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N07",
+    "category": "negative",
+    "summary": "Row order changed in the localization file",
+    "edits": [
+      { "op": "move_row", "file": "locales/strings.csv", "key": "tutorial.potion_hint", "to_index": 0 }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N08",
+    "category": "negative",
+    "summary": "Unbound string containing a number added (no binding, so no claim check)",
+    "edits": [
+      { "op": "add_row", "file": "locales/strings.csv", "values": { "key": "ui.shop.discount", "en": "Save 50% today!", "ja": "本日50%オフ！" } }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N09",
+    "category": "negative",
+    "summary": "Intentionally nonliteral JA text reworded, still without a number",
+    "edits": [
+      { "op": "set_text", "file": "locales/strings.csv", "key": "item.ration.description", "locale": "ja", "from": "HPを少し回復する。", "to": "HPをちょっと回復する。" }
+    ],
+    "expected": []
+  },
+  {
+    "id": "N10",
+    "category": "negative",
+    "summary": "Potion heal changed and every bound string updated to match, in both locales",
+    "edits": [
+      { "op": "set_field", "file": "data/items.json", "entity": "potion", "field": "heal", "from": 50, "to": 40 },
+      { "op": "set_text", "file": "locales/strings.csv", "key": "item.potion.description", "locale": "en", "from": "Restores 50 HP to one ally.", "to": "Restores 40 HP to one ally." },
+      { "op": "set_text", "file": "locales/strings.csv", "key": "item.potion.description", "locale": "ja", "from": "味方単体のHPを50回復する。", "to": "味方単体のHPを40回復する。" },
+      { "op": "set_text", "file": "locales/strings.csv", "key": "tutorial.potion_hint", "locale": "en", "from": "Tip: a Potion restores 50 HP.", "to": "Tip: a Potion restores 40 HP." },
+      { "op": "set_text", "file": "locales/strings.csv", "key": "tutorial.potion_hint", "locale": "ja", "from": "ヒント：ポーションはHPを50回復する。", "to": "ヒント：ポーションはHPを40回復する。" }
+    ],
+    "expected": []
+  }
+]

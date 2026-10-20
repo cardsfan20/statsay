@@ -1,0 +1,12 @@
+{
+  "coverage": {
+    "source": "items",
+    "entities": 13,
+    "bound": 12,
+    "unbound": ["items.antidote"]
+  },
+  "findings": [
+    { "rule": "unbound_claim", "severity": "info", "locale": "en", "key": "item.brew.description", "value": 3 },
+    { "rule": "unbound_claim", "severity": "info", "locale": "ja", "key": "item.brew.description", "value": 3 }
+  ]
+}
