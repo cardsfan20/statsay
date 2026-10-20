@@ -1,8 +1,12 @@
-"""Run the checks on the current revision.
+"""Run the checks.
 
-Rules: value_mismatch for numeric claims, enum_term_mismatch for vocabulary
-terms, locale_value_divergence for both, and unbound_claim for numbers in
-bound strings that can't be tied to a field.
+On the current revision: value_mismatch for numeric claims, enum_term_mismatch
+for vocabulary terms, locale_value_divergence for both, and unbound_claim for
+numbers in bound strings that can't be tied to a field.
+
+In diff mode (a base revision is given): watched_field_changed for strings
+whose watched field changed while the string, in that locale, did not, and
+which make no claim about that field.
 """
 
 from __future__ import annotations
@@ -11,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from statsay import StatsayError
-from statsay.adapters import load_entities, load_strings
+from statsay.adapters import Reader, load_entities, load_strings
 from statsay.binding import Binding, Coverage, resolve
 from statsay.config import Config, term_key
 from statsay.extract import HIGH, extract_number_claims, extract_term_claims
@@ -35,6 +39,8 @@ class Finding:
     actual: object = None   # the data value: number, string, bool or list
     value: int | float | None = None
     values: dict | None = None
+    old: object = None      # diff mode: the base value of a changed field
+    new: object = None
     text: str | None = None
     span: tuple[int, int] | None = None
     file: str | None = None
@@ -52,21 +58,23 @@ class Result:
     stats: dict = field(default_factory=dict)
 
 
-def run(config: Config) -> Result:
-    entities = {source_id: load_entities(source) for source_id, source in config.data_sources.items()}
-    strings: dict = {}
-    for source in config.localization:
-        for key, by_locale in load_strings(source).items():
-            if key in strings:
-                raise StatsayError(f"key '{key}' appears in more than one localization file")
-            strings[key] = by_locale
+def run(config: Config, base: Reader | None = None) -> Result:
+    """Check the current files; with `base`, also compare against that revision."""
+    entities, strings = _load(config)
+    if base is not None:
+        base_entities, base_strings = _load(config, base, missing_ok=True)
 
     bindings, coverage, diagnostics = resolve(config, entities, strings)
     findings: list[Finding] = []
     checked = 0
     for binding in bindings:
         checked += len(strings[binding.key])
-        findings.extend(_check_binding(config, binding, strings[binding.key]))
+        binding_findings, claimed_fields = _check_binding(config, binding, strings[binding.key])
+        findings.extend(binding_findings)
+        if base is not None:
+            base_entity = base_entities.get(binding.entity.source, {}).get(binding.entity.id)
+            findings.extend(_check_changes(config, binding, strings[binding.key], claimed_fields,
+                                           base_entity, base_strings.get(binding.key, {})))
 
     findings.sort(key=lambda f: (f.file or "", f.line or 0, f.key, f.locale or "", f.rule))
     stats = {
@@ -78,7 +86,49 @@ def run(config: Config) -> Result:
     return Result(coverage, findings, diagnostics, stats)
 
 
-def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Finding]:
+def _load(config: Config, read: Reader | None = None, missing_ok: bool = False):
+    options = {"missing_ok": missing_ok, **({"read": read} if read else {})}
+    entities = {source_id: load_entities(source, **options) for source_id, source in config.data_sources.items()}
+    strings: dict = {}
+    for source in config.localization:
+        for key, by_locale in load_strings(source, **options).items():
+            if key in strings:
+                raise StatsayError(f"key '{key}' appears in more than one localization file")
+            strings[key] = by_locale
+    return entities, strings
+
+
+def _check_changes(config, binding, by_locale, claimed_fields, base_entity, base_by_locale) -> list[Finding]:
+    """watched_field_changed: data moved, the text didn't, and the text states nothing about it."""
+    if base_entity is None:
+        return []  # a new entity; its strings were written against the current data
+    missing = object()
+    changed = {
+        name: (base_entity.fields.get(name, missing), binding.entity.fields.get(name, missing))
+        for name in binding.watched_fields
+        if base_entity.fields.get(name, missing) != binding.entity.fields.get(name, missing)
+    }
+    findings = []
+    for locale, loc in by_locale.items():
+        base_loc = base_by_locale.get(locale)
+        if base_loc is None or base_loc.text != loc.text:
+            continue  # the string is new or was edited in this change
+        for name, (old, new) in changed.items():
+            if name in claimed_fields.get(locale, set()):
+                continue
+            old, new = (None if v is missing else v for v in (old, new))
+            findings.append(Finding(
+                rule="watched_field_changed", severity=WARNING, key=binding.key, entity=binding.entity.ref,
+                locale=locale, field=name, old=old, new=new, text=loc.text,
+                file=_display_path(config, loc.file), line=loc.line,
+                message=f"{name} changed {_display(old)} -> {_display(new)}; "
+                        f"this text did not change and states no value for it",
+            ))
+    return findings
+
+
+def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[list[Finding], dict[str, set]]:
+    """Findings for one binding, plus the fields each locale's text makes claims about."""
     entity = binding.entity
     watched = [name for name in binding.watched_fields if name in config.claims]
     numeric = {name: config.claims[name] for name in watched
@@ -88,11 +138,13 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Fi
     findings = []
     # locale -> [(field, value, confidence)] for single-field claims, used for divergence
     claimed: dict[str, list[tuple]] = {}
+    claimed_fields: dict[str, set] = {}  # locale -> every field any claim was tied to
 
     for locale, loc in by_locale.items():
         base = dict(key=binding.key, entity=entity.ref, locale=locale, text=loc.text,
                     file=_display_path(config, loc.file), line=loc.line)
         claimed[locale] = []
+        claimed_fields[locale] = set()
 
         anchors = {name: rule.anchors.get(locale, ()) for name, rule in numeric.items()}
         for claim in extract_number_claims(loc.text, anchors):
@@ -102,6 +154,7 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Fi
                     message=f"number {claim.value} is not tied to any watched field", **base,
                 ))
                 continue
+            claimed_fields[locale].update(claim.fields)
             if claim.field:
                 claimed[locale].append((claim.field, claim.value, claim.confidence))
             actuals = {name: entity.fields[name] for name in claim.fields}
@@ -125,6 +178,7 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Fi
             for name, rule in enums.items()
         }
         for claim in extract_term_claims(loc.text, vocabularies):
+            claimed_fields[locale].update(claim.values)
             if claim.field:
                 claimed[locale].append((claim.field, claim.values[claim.field], claim.confidence))
             if any(value in _term_set(entity.fields[name]) for name, value in claim.values.items()):
@@ -163,7 +217,7 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> list[Fi
             field=name, values=values, message=f"{name}: locales disagree ({listed})",
             file=_display_path(config, first.file) if first else None, line=first.line if first else None,
         ))
-    return findings
+    return findings, claimed_fields
 
 
 def _values(claimed, name, high_only):

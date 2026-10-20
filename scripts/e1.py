@@ -3,8 +3,10 @@
 Usage:
     python scripts/e1.py fixtures/toy-game
 
-Implemented rules are scored. Expected findings for rules not built yet, and
-diff-only findings, are counted as out of scope. Exits 0 when Gate 1 holds:
+Each case runs twice: on the current revision alone, and in diff mode against
+the clean fixture. Findings marked diff_only are expected only in diff mode.
+Expected findings for rules not built yet count as out of scope. Exits 0 when
+Gate 1 holds:
 every planted in-scope bug is found and fails CI, and the clean fixture and
 negative controls produce no unexpected findings.
 """
@@ -21,9 +23,12 @@ import fixture  # noqa: E402  (scripts/fixture.py)
 
 from statsay.config import load_config  # noqa: E402
 from statsay.engine import run  # noqa: E402
+from statsay.revisions import directory_reader  # noqa: E402
 
-RULES = {"value_mismatch", "locale_value_divergence", "unbound_claim", "enum_term_mismatch"}
-IDENTITY = ("rule", "severity", "locale", "key", "field", "claimed", "actual", "value", "values")
+RULES = {"value_mismatch", "locale_value_divergence", "unbound_claim", "enum_term_mismatch",
+         "watched_field_changed"}
+MODES = ("current", "diff")
+IDENTITY = ("rule", "severity", "locale", "key", "field", "claimed", "actual", "value", "values", "old", "new")
 
 
 def identity(finding):
@@ -42,17 +47,18 @@ def _hashable(value):
     return value
 
 
-def in_scope(expected):
-    return expected["rule"] in RULES and not expected.get("diff_only")
+def in_scope(expected, mode):
+    return expected["rule"] in RULES and (mode == "diff" or not expected.get("diff_only"))
 
 
-def run_on(directory):
-    result = run(load_config(directory))
+def run_on(directory, base_dir=None):
+    config = load_config(directory)
+    result = run(config, base=directory_reader(config, base_dir) if base_dir else None)
     return [finding.to_dict() for finding in result.findings], result.stats["checked"]
 
 
 def cases(fixture_dir):
-    """Yield one dict per run: the clean fixture, then each mutation.
+    """Yield one dict per run: the clean fixture, then each mutation, in both modes.
 
     `expected` is the clean baseline plus the mutation's in-scope findings;
     `planted` is just the mutation's in-scope findings.
@@ -61,18 +67,22 @@ def cases(fixture_dir):
     clean = json.loads((root / "expected" / "clean.json").read_text(encoding="utf-8"))["findings"]
     baseline = Counter(identity(f) for f in clean)
 
-    actual, checked = run_on(root)
-    yield dict(id="clean", category="clean", expected=baseline, planted=Counter(),
-               out_of_scope=0, actual=actual, checked=checked)
+    for mode in MODES:
+        actual, checked = run_on(root, root if mode == "diff" else None)
+        yield dict(id="clean", mode=mode, category="clean", expected=baseline, planted=Counter(),
+                   out_of_scope=0, actual=actual, checked=checked)
 
     for mutation in fixture.load_mutations(root):
-        planted = Counter(identity(f) for f in mutation["expected"] if in_scope(f))
         with tempfile.TemporaryDirectory() as tmp:
-            fixture.materialize(root, mutation, Path(tmp) / mutation["id"])
-            actual, checked = run_on(Path(tmp) / mutation["id"])
-        yield dict(id=mutation["id"], category=mutation["category"], expected=baseline + planted,
-                   planted=planted, out_of_scope=sum(1 for f in mutation["expected"] if not in_scope(f)),
-                   actual=actual, checked=checked)
+            head = Path(tmp) / mutation["id"]
+            fixture.materialize(root, mutation, head)
+            for mode in MODES:
+                planted = Counter(identity(f) for f in mutation["expected"] if in_scope(f, mode))
+                actual, checked = run_on(head, root if mode == "diff" else None)
+                yield dict(id=mutation["id"], mode=mode, category=mutation["category"],
+                           expected=baseline + planted, planted=planted,
+                           out_of_scope=sum(1 for f in mutation["expected"] if not in_scope(f, mode)),
+                           actual=actual, checked=checked)
 
 
 def score(case):
@@ -93,7 +103,7 @@ def evaluate(fixture_dir):
 
     for case in cases(fixture_dir):
         result = score(case)
-        # Baseline findings count as true positives once, in the clean run, not again per mutation.
+        # Baseline findings count as true positives once per mode, in the clean run, not per mutation.
         true_positives = result["found"] if case["id"] == "clean" else result["found"] & case["planted"]
         for counter, name in ((true_positives, "tp"), (result["missed"], "fn"), (result["extra"], "fp")):
             for item, count in counter.items():
@@ -106,9 +116,9 @@ def evaluate(fixture_dir):
             problems.append(f"{sum(result['missed'].values())} expected finding(s) missed")
         if result["extra"]:
             problems.append(f"{sum(result['extra'].values())} unexpected finding(s)")
-        failures.extend(f"{case['id']}: {problem}" for problem in problems)
+        failures.extend(f"{case['id']} ({case['mode']}): {problem}" for problem in problems)
 
-        rows.append((case["id"], case["category"], sum(result["found"].values()),
+        rows.append((case["id"], case["mode"], case["category"], sum(result["found"].values()),
                      sum(result["missed"].values()), sum(result["extra"].values()),
                      case["out_of_scope"], "yes" if result["fails_ci"] else "no"))
 
@@ -122,8 +132,8 @@ def main():
     fixture_dir = sys.argv[1]
     rows, per_rule, total_checked, alerts, failures = evaluate(fixture_dir)
 
-    print("| Case | Category | Found | Missed | Unexpected | Out of scope | Fails CI |")
-    print("| --- | --- | --- | --- | --- | --- | --- |")
+    print("| Case | Mode | Category | Found | Missed | Unexpected | Out of scope | Fails CI |")
+    print("| --- | --- | --- | --- | --- | --- | --- | --- |")
     for row in rows:
         print("| " + " | ".join(str(cell) for cell in row) + " |")
 

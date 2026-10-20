@@ -1,18 +1,29 @@
 """Read game data and localization files into a normalized model.
 
-M1 supports one data format (a JSON array of objects) and one localization
-format (CSV with a key column and one column per locale).
+Supported: one data format (a JSON array of objects) and one localization
+format (CSV with a key column and one column per locale). Every loader takes a
+`read` function, so the same code reads the working tree, another directory or
+a Git revision (see revisions.py).
 """
 
 from __future__ import annotations
 
 import csv
+import io
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from statsay import StatsayError
 from statsay.config import DataSource, LocalizationSource
+
+
+Reader = Callable[[Path], str]  # raises FileNotFoundError for a missing file
+
+
+def read_file(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -35,11 +46,13 @@ class LocString:
     line: int
 
 
-def load_entities(source: DataSource) -> dict[str, Entity]:
-    """Entities by id, in file order."""
+def load_entities(source: DataSource, read: Reader = read_file, missing_ok: bool = False) -> dict[str, Entity]:
+    """Entities by id, in file order. A missing file is empty when `missing_ok`."""
     try:
-        data = json.loads(source.path.read_text(encoding="utf-8"))
+        data = json.loads(read(source.path))
     except FileNotFoundError:
+        if missing_ok:
+            return {}
         raise StatsayError(f"data source '{source.id}': file not found: {source.path}") from None
     except json.JSONDecodeError as error:
         raise StatsayError(f"{source.path}: invalid JSON: {error}") from None
@@ -60,15 +73,18 @@ def load_entities(source: DataSource) -> dict[str, Entity]:
     return entities
 
 
-def load_strings(source: LocalizationSource) -> dict[str, dict[str, LocString]]:
+def load_strings(source: LocalizationSource, read: Reader = read_file,
+                 missing_ok: bool = False) -> dict[str, dict[str, LocString]]:
     """Strings by key, then locale. Empty cells are treated as missing."""
     try:
-        handle = source.path.open(encoding="utf-8-sig", newline="")
+        text = read(source.path).lstrip("﻿")
     except FileNotFoundError:
+        if missing_ok:
+            return {}
         raise StatsayError(f"localization file not found: {source.path}") from None
 
     strings: dict[str, dict[str, LocString]] = {}
-    with handle:
+    with io.StringIO(text, newline="") as handle:
         reader = csv.DictReader(handle)
         header = reader.fieldnames or []
         missing = [column for column in (source.key_column, *source.locales) if column not in header]

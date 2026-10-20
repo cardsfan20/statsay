@@ -8,7 +8,7 @@ from conftest import FIXTURE
 CASES = list(e1.cases(FIXTURE))
 
 
-@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
+@pytest.mark.parametrize("case", CASES, ids=[f"{case['id']}-{case['mode']}" for case in CASES])
 def test_case_matches_expectation(case):
     result = e1.score(case)
     assert not result["missed"], f"missed: {sorted(result['missed'])}"
@@ -16,8 +16,8 @@ def test_case_matches_expectation(case):
     assert not result["problems"], result["problems"]
 
 
-def test_every_planted_bug_is_in_scope_or_explicitly_deferred():
+def test_every_planted_bug_is_in_scope():
     planted = [case for case in CASES if case["category"] in ("data_only", "text_only")]
-    deferred = [case["id"] for case in planted if not case["planted"]]
-    # D10 (no claim, only visible in diff mode) needs watched_field_changed.
-    assert deferred == ["D10"]
+    assert [case["id"] for case in planted if case["mode"] == "diff" and not case["planted"]] == []
+    # D10 has no claim to check, so only diff mode can see it.
+    assert [case["id"] for case in planted if case["mode"] == "current" and not case["planted"]] == ["D10"]
