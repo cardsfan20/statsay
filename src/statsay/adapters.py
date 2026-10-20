@@ -110,6 +110,33 @@ def load_strings(source: LocalizationSource, read: Reader = read_file,
     return strings
 
 
+def load_po_strings(source: LocalizationSource, strings: dict[str, dict[str, LocString]],
+                    read: Reader = read_file, missing_ok: bool = False) -> dict[str, dict[str, LocString]]:
+    """Translations from a PO file, joined to keys whose source-locale text equals a msgid."""
+    from statsay import po
+
+    try:
+        text = read(source.path).lstrip("\ufeff")
+    except FileNotFoundError:
+        if missing_ok:
+            return {}
+        raise StatsayError(f"localization file not found: {source.path}") from None
+    by_msgid: dict[str, list] = {}
+    for entry in po.parse(text):
+        if entry.usable:
+            by_msgid.setdefault(entry.fields["msgid"], []).append(entry)
+    [locale] = source.locales
+    out = {}
+    for key, by_locale in strings.items():
+        original = by_locale.get(source.source_locale)
+        matches = by_msgid.get(original.text) if original else None
+        if matches and len(matches) == 1:
+            entry = matches[0]
+            out[key] = {locale: LocString(key, locale, entry.fields["msgstr"], source.path,
+                                          entry.lines["msgstr"] + 1, source.control_codes)}
+    return out
+
+
 def load_data_strings(source: LocalizationSource, entities: dict[str, Entity],
                       data_path: Path) -> dict[str, dict[str, LocString]]:
     """Text stored in an entity field, keyed by source.key_pattern. Empty text is missing."""

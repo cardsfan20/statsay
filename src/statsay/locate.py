@@ -88,6 +88,9 @@ def unified_patch(fixes: list[dict], cache: FileCache, root: Path) -> str:
 
 
 def _encoders(file: Path):
+    if file.suffix.lower() in (".po", ".pot"):
+        from statsay.po import escape
+        return (escape,)
     if file.suffix.lower() == ".json":
         return (lambda s: json.dumps(s, ensure_ascii=False)[1:-1], lambda s: json.dumps(s)[1:-1])
     return (lambda s: s, lambda s: s.replace('"', '""'))

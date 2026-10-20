@@ -17,7 +17,7 @@ from dataclasses import field as dataclass_field  # `field` is shadowed inside F
 from pathlib import Path
 
 from statsay import StatsayError
-from statsay.adapters import Reader, load_data_strings, load_entities, load_strings
+from statsay.adapters import Reader, load_data_strings, load_entities, load_po_strings, load_strings
 from statsay.binding import Binding, Coverage, resolve
 from statsay.config import Config, term_key
 from statsay.extract import CONTROL_CODES, HIGH, extract_number_claims, extract_term_claims
@@ -157,9 +157,12 @@ def _load(config: Config, read: Reader | None = None, missing_ok: bool = False):
     for source_id, by_id in entities.items():
         apply_derived(config, source_id, by_id)
     strings: dict = {}
-    for source in config.localization:
+    # PO files join on source-locale text, so they load after every other source.
+    for source in sorted(config.localization, key=lambda s: s.format == "po"):
         if source.format == "csv":
             loaded = load_strings(source, **options)
+        elif source.format == "po":
+            loaded = load_po_strings(source, strings, **options)
         else:
             loaded = load_data_strings(source, entities[source.source], config.data_sources[source.source].path)
         for key, by_locale in loaded.items():

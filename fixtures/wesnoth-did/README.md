@@ -36,3 +36,20 @@ The test `tests/test_wesnoth.py` runs both checks when `STATSAY_NETWORK=1` is se
 | `ecfcc25` (1.19.28) | 33 | None |
 
 Of 60 strings at 1.16.11, 24 carry numbers tied to a field (26 high-confidence claims). Statsay flagged the 2 wrong strings and none of the other 22.
+
+## Transfer test with the real PO file (M3)
+
+Since M3, `build` keeps Wesnoth's `ja.po` unchanged, and Statsay's `po` source joins it to the English text by msgid. The script's own PO parser is no longer in the path. Same results: both expected errors at 1.16.11, nothing after the fix. The Japanese suggested fix points into `ja.po` (line and column of `+1`).
+
+`statsay flag` on that file is the write-back test. It inserted exactly two lines into the 6,665-line file and kept every other byte; a second run changed nothing:
+
+```diff
++# statsay: value_mismatch: damage: text says 1, data says 2
+ #. [advancement]: id=mal_keshar_amla_shadow
+ #: data/campaigns/Descent_Into_Darkness/utils/amlas.cfg:300
++#, fuzzy
+ msgid "+1 shadow wave damage"
+ msgstr "影の波動のダメージ +1"
+```
+
+The English finding comes from a CSV, so it went to `statsay-review.json` instead.

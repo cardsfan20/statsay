@@ -15,7 +15,7 @@ from statsay.extract import CONTROL_CODES
 CONFIG_NAME = "statsay.yaml"
 CLAIM_KINDS = {"number", "enum"}
 DATA_FORMATS = {"json", "rpgmaker"}
-LOCALIZATION_FORMATS = {"csv", "data"}
+LOCALIZATION_FORMATS = {"csv", "data", "po"}
 FIELD_KINDS = {"value", "formula"}
 PATH_SEGMENT_RE = re.compile(r"^(\w+)(?:\[(\w+)=([^\]]+)\])?$")
 
@@ -30,7 +30,7 @@ class DataSource:
 
 @dataclass(frozen=True)
 class LocalizationSource:
-    format: str                       # "csv", or "data": text stored in a data source field
+    format: str                       # "csv"; "data": text in a data source field; "po": gettext
     locales: tuple[str, ...]
     path: Path | None = None          # csv
     key_column: str | None = None     # csv
@@ -38,6 +38,7 @@ class LocalizationSource:
     field: str | None = None          # data: entity field holding the text, e.g. description
     key_pattern: str | None = None    # data: key given to each entity's text, e.g. item.{id}.description
     control_codes: str | None = None  # engine whose control codes are masked, e.g. rpgmaker
+    source_locale: str | None = None  # po: the locale whose text is the msgid
 
 
 @dataclass(frozen=True)
@@ -232,6 +233,13 @@ def _localization(item, root, data_sources):
             format=fmt, locales=tuple(str(locale) for locale in locales),
             path=root / _str(item, "path", "localization"),
             key_column=_str(item, "key_column", "localization"), control_codes=codes,
+        )
+
+    if fmt == "po":
+        return LocalizationSource(
+            format=fmt, locales=(_str(item, "locale", "localization"),),
+            path=root / _str(item, "path", "localization"),
+            source_locale=_str(item, "source_locale", "localization"), control_codes=codes,
         )
 
     source = _str(item, "source", "localization")

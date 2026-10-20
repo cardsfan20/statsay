@@ -8,10 +8,14 @@ data_sources:
     entity_id_field: id
 
 localization:
-  - path: locales/strings.csv
+  - path: locales/en.csv
     format: csv
     key_column: key
-    locales: [en, ja]
+    locales: [en]
+  - path: locales/ja.po              # the real Wesnoth PO file, joined to English by msgid (M3)
+    format: po
+    locale: ja
+    source_locale: en
 
 bindings:
   - convention: "amla.{id}.description"

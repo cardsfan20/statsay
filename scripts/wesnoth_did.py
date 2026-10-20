@@ -5,7 +5,8 @@ Usage:
     python scripts/wesnoth_did.py check <ref>
 
 `build` downloads utils/amlas.cfg and po/wesnoth-did/ja.po at a pinned Wesnoth
-commit and converts them into data/amlas.json, locales/strings.csv and a copy
+commit and converts them into data/amlas.json, locales/en.csv, the unchanged
+locales/ja.po (Statsay joins it to English by msgid) and a copy
 of fixtures/wesnoth-did/statsay.yaml. Wesnoth is GPL-licensed, so its text is
 fetched at run time and never committed here.
 
@@ -118,7 +119,8 @@ def build(ref, out_dir):
     if out_dir.exists() and any(out_dir.iterdir()):
         raise SystemExit(f"error: {out_dir} is not empty")
     advancements, notes = parse_amlas(fetch(ref, AMLAS))
-    translations = parse_po(fetch(ref, JA_PO))
+    ja_po = fetch(ref, JA_PO)
+    translations = parse_po(ja_po)  # only to report how many have Japanese text
 
     ids = [a["id"] for a in advancements]
     duplicates = sorted({i for i in ids if ids.count(i) > 1})
@@ -130,12 +132,13 @@ def build(ref, out_dir):
     data = [{"id": a["id"], **a["fields"]} for a in advancements]
     (out_dir / "data" / "amlas.json").write_text(
         json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
-    with (out_dir / "locales" / "strings.csv").open("w", encoding="utf-8", newline="") as handle:
+    with (out_dir / "locales" / "en.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(["key", "en", "ja"])
+        writer.writerow(["key", "en"])
         for a in advancements:
-            writer.writerow([f"amla.{a['id']}.description", a["description"],
-                             translations.get(a["description"], "")])
+            writer.writerow([f"amla.{a['id']}.description", a["description"]])
+    # The real PO file, unchanged: Statsay joins it to the English text by msgid.
+    (out_dir / "locales" / "ja.po").write_text(ja_po, encoding="utf-8", newline="")
     shutil.copy2(FIXTURE / "statsay.yaml", out_dir / "statsay.yaml")
 
     translated = sum(1 for a in advancements if a["description"] in translations)
