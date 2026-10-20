@@ -1,0 +1,38 @@
+# Statsay configuration for Cataclysm-DDA armor materials, vocabulary B (hand-written).
+# Used by scripts/cdda_materials.py, which writes data/ and locales/ next to a copy of
+# this file. Written before Statsay was first run on this data.
+#
+# `material_family` is each item's material list with variants folded into a base
+# family by the converter (nylon_2 / nylon_quilted -> nylon, cotton_quilted -> cotton,
+# leather_treated -> leather, wool_quilted -> wool). CDDA has no polyester material;
+# its "synthetic fabric" (nylon) stands for synthetic fibres in general, so "polyester"
+# is listed under nylon. That synonym is a human judgment, and the electric blanket
+# bug can only be caught with it.
+
+data_sources:
+  - { id: items, path: data/items.json }
+
+localization:
+  - { format: csv, path: locales/strings.csv, key_column: key, locales: [en] }
+
+bindings:
+  - convention: "item.{id}.description"
+    source: items
+    watched_fields: [material_family]
+
+claims:
+  material_family:
+    kind: enum
+    vocabulary:
+      cotton:   { en: ["cotton"] }
+      nylon:    { en: ["nylon", "polyester", "synthetic fabric"] }
+      wool:     { en: ["wool", "woolen", "woollen"] }
+      leather:  { en: ["leather"] }
+      fur:      { en: ["fur"] }
+      faux_fur: { en: ["faux fur", "fake fur"] }
+      kevlar:   { en: ["kevlar"] }
+      lycra:    { en: ["lycra", "spandex"] }
+      neoprene: { en: ["neoprene"] }
+      nomex:    { en: ["nomex"] }
+      denim:    { en: ["denim"] }
+      canvas:   { en: ["canvas"] }

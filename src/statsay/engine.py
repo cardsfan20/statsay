@@ -144,6 +144,8 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
                if config.claims[name].kind == "number" and _is_number(entity.fields.get(name))}
     enums = {name: config.claims[name] for name in watched
              if config.claims[name].kind == "enum" and name in entity.fields}
+    # A stray number only hints at a missing binding if this binding tracks numbers at all.
+    tracks_numbers = any(config.claims[name].kind == "number" for name in watched)
     findings = []
     # locale -> [(field, value, confidence)] for single-field claims, used for divergence
     claimed: dict[str, list[tuple]] = {}
@@ -159,10 +161,11 @@ def _check_binding(config: Config, binding: Binding, by_locale: dict) -> tuple[l
         codes = CONTROL_CODES.get(loc.codes)
         for claim in extract_number_claims(loc.text, anchors, codes):
             if not claim.fields:
-                findings.append(Finding(
-                    rule="unbound_claim", severity=INFO, value=claim.value, span=claim.span,
-                    message=f"number {claim.value} is not tied to any watched field", **base,
-                ))
+                if tracks_numbers:
+                    findings.append(Finding(
+                        rule="unbound_claim", severity=INFO, value=claim.value, span=claim.span,
+                        message=f"number {claim.value} is not tied to any watched field", **base,
+                    ))
                 continue
             claimed_fields[locale].update(claim.fields)
             if claim.field:

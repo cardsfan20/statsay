@@ -36,3 +36,12 @@ def test_flag_contradiction_warns_until_vocabulary_is_validated(tmp_path):
 
 def test_validated_vocabulary_fails_ci(tmp_path):
     assert {f.severity for f in make(tmp_path, "true").findings} == {"error"}
+
+
+def test_stray_numbers_are_not_reported_when_the_binding_tracks_no_numbers(tmp_path):
+    (tmp_path / "statsay.yaml").write_text(CONFIG % "false", encoding="utf-8")
+    (tmp_path / "units.json").write_text(json.dumps([{"id": "retusa", "targets_air": False}]), encoding="utf-8")
+    (tmp_path / "strings.csv").write_text(
+        "key,en,ja\nunit.retusa.description,Fires 2 torpedoes. Cannot target air.,魚雷を2発撃つ。空中を攻撃できない。\n",
+        encoding="utf-8")
+    assert run(load_config(tmp_path)).findings == []

@@ -33,8 +33,9 @@ python -m venv .venv
 .venv/Scripts/python scripts/e1.py fixtures/toy-game      # E1 metrics and Gate 1 verdict
 .venv/Scripts/python scripts/e1.py fixtures/rpgmaker-mz   # same, on an RPG Maker MZ database
 .venv/Scripts/python scripts/wesnoth_did.py check 83d4b397f1de466c721e4e393b361c71fc4f5b6c   # real bug: Wesnoth #8549
+.venv/Scripts/python scripts/cdda_materials.py check 5d320508149b28da05fc4d45e4a8f2d1c7547ef6  # real bug: CDDA #53277
 ```
 
-The Wesnoth check downloads files at a pinned commit; see [fixtures/wesnoth-did/](fixtures/wesnoth-did/README.md).
+The real-bug checks download files at pinned commits; see [fixtures/wesnoth-did/](fixtures/wesnoth-did/README.md) and [fixtures/cdda-materials/](fixtures/cdda-materials/README.md).
 
 `statsay check` exits with 1 when findings at or above `--fail-on` exist (default `error`), and with 2 on configuration errors. Use `--format json` for machine-readable output, and `--base-ref origin/main` (or `--base DIR`) for diff mode.
