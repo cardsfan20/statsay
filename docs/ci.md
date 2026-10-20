@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: <owner>/statsay@<tag>      # this repository, until Statsay is published
+      - uses: cardsfan20/statsay@v0.1.0
         with:
           path: .                        # statsay.yaml or its directory
           baseline: .statsay-baseline.json
@@ -52,8 +52,8 @@ Not yet tested against GitHub itself: `ci/run-check.sh` is tested locally agains
 ```yaml
 # .pre-commit-config.yaml
 repos:
-  - repo: <this repository URL>
-    rev: <tag>
+  - repo: https://github.com/cardsfan20/statsay
+    rev: v0.1.0
     hooks:
       - id: statsay      # runs `statsay check --base-ref HEAD` when data or text files change
 ```

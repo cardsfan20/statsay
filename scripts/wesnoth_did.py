@@ -149,19 +149,19 @@ def build(ref, out_dir):
 
 def check(ref):
     sys.path.insert(0, str(ROOT / "scripts"))
-    import e1
+    import evaluate
     from statsay.config import load_config
     from statsay.engine import run
 
     expected_all = json.loads((FIXTURE / "expected.json").read_text(encoding="utf-8"))
     if ref not in expected_all:
         raise SystemExit(f"error: no expectation for ref {ref} in expected.json")
-    expected = {e1.identity(f) for f in expected_all[ref]["findings"]}
+    expected = {evaluate.identity(f) for f in expected_all[ref]["findings"]}
 
     with tempfile.TemporaryDirectory() as tmp:
         build(ref, Path(tmp) / "input")
         result = run(load_config(Path(tmp) / "input"))
-    actual = {e1.identity(f.to_dict()) for f in result.findings}
+    actual = {evaluate.identity(f.to_dict()) for f in result.findings}
     for c in result.coverage:
         print(f"coverage: {c.bound} of {c.entities} bound")
     for f in result.findings:

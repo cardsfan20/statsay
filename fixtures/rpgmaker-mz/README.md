@@ -27,4 +27,4 @@ A small Japanese-source game in the MZ database format (see [docs/rpgmaker-fit-n
 | Fire | Raw `mpCost` field; `damage.formula` watched as a formula, never evaluated |
 | Attack | No description, so it shows as unbound in coverage |
 
-Run `python scripts/e1.py fixtures/rpgmaker-mz` to score it.
+Run `python scripts/evaluate.py fixtures/rpgmaker-mz` to score it.

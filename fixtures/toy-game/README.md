@@ -1,6 +1,6 @@
 # Toy game fixture
 
-Ground truth for evaluation E1 (mutation fixtures) and the test data for M1. A clean toy game whose EN/JA item descriptions all agree with the data, plus planted mutations, each listing the exact findings the tool should report.
+Ground truth for `scripts/evaluate.py` and the test suite. A clean toy game whose EN/JA item descriptions all agree with the data, plus planted mutations, each listing the exact findings the tool should report.
 
 ## Layout
 
@@ -8,7 +8,7 @@ Ground truth for evaluation E1 (mutation fixtures) and the test data for M1. A c
 | --- | --- |
 | `data/items.json` | 15 items; watched fields `heal`, `mp`, `duration`, `attack_up`, `revive_percent`, `scope`, `cures` (a list), `battle_use` (a boolean); unwatched `price` |
 | `locales/strings.csv` | `key,en,ja`; names and descriptions, plus one tutorial hint |
-| `statsay.yaml` | Bindings and claim rules in the spec's proposed syntax |
+| `statsay.yaml` | Bindings and claim rules |
 | `expected/clean.json` | Coverage and findings for the unmutated fixture |
 | `mutations.json` | 12 data-only, 3 text-only and 11 negative-control mutations with expected findings |
 
@@ -27,8 +27,8 @@ Ground truth for evaluation E1 (mutation fixtures) and the test data for M1. A c
 | `ration` | EN quotes the number; JA paraphrases (「少し回復」) |
 | `smoke_bomb` | No numeric fields |
 | `antidote` | Unbound: its key `item.antidote.desc` breaks the convention |
-| `panacea` | List-valued enum (`cures`), like CDDA's materials and ammo types in E2 |
-| `tent` | Boolean flag (`battle_use`) named by a negated phrase, like Mindustry's Retusa in E2 |
+| `panacea` | List-valued enum (`cures`), like Cataclysm-DDA's materials and ammo types |
+| `tent` | Boolean flag (`battle_use`) named by a negated phrase, like Mindustry's Retusa ("does not target air") |
 
 ## How to read `expected`
 
@@ -49,4 +49,4 @@ python scripts/fixture.py apply fixtures/toy-game D01 out/D01 # write a mutated 
 
 ## Not covered yet
 
-Kanji numerals (五十, 半分), ranges ("10–20"), multipliers ("x2"), plurals, units needing conversion (frames, fractions), and nested data. The last two arrive with the RPG Maker adapter in M2.
+Kanji numerals (五十, 半分), ranges ("10–20"), multipliers ("x2"), plurals, units needing conversion (frames, fractions), and nested data. The last two are covered by the RPG Maker fixture.

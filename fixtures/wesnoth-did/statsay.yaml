@@ -12,7 +12,7 @@ localization:
     format: csv
     key_column: key
     locales: [en]
-  - path: locales/ja.po              # the real Wesnoth PO file, joined to English by msgid (M3)
+  - path: locales/ja.po              # the real Wesnoth PO file, joined to English by msgid
     format: po
     locale: ja
     source_locale: en

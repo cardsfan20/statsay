@@ -8,7 +8,12 @@ dynamic = ["version"]
 description = "Find localized game text that contradicts the game data it describes."
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
 dependencies = ["PyYAML>=6"]
+
+[project.urls]
+Homepage = "https://github.com/cardsfan20/statsay"
+Issues = "https://github.com/cardsfan20/statsay/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

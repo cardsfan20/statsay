@@ -69,7 +69,7 @@ def render_sarif(result: Result) -> str:
         "runs": [{
             "tool": {"driver": {
                 "name": "statsay", "version": __version__,
-                "informationUri": "https://pypi.org/project/statsay/",
+                "informationUri": "https://github.com/cardsfan20/statsay",
                 "rules": [{"id": rule, "shortDescription": {"text": RULE_HELP.get(rule, rule)}} for rule in rules],
             }},
             "columnKind": "utf16CodeUnits",

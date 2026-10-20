@@ -43,9 +43,9 @@ The 34 plausible contradictions are 7 distinct issues, many repeated across size
 
 At master, a new candidate appears after the survivor-gear rework: the faux-fur hoods say "lined with faux fur" but list real `fur` (3 findings).
 
-## Vocabulary B v2: aliases, hyphens and contrast cues (M3)
+## Vocabulary B v2: aliases, hyphens and contrast cues
 
-`statsay-v2.yaml` uses three M3 features instead of the converter's family folding:
+`statsay-v2.yaml` uses three features added after v1 instead of the converter's family folding:
 - `aliases` (e.g. `kevlar` also satisfied by `kevlar_layered`, `fur` by `mut_fur`)
 - hyphen/space equivalence ("faux-fur" matches "faux fur")
 - English `contrast_cues` ("than", "instead of", "rather than", "in lieu of", "unlike", "compared to", "as opposed to")
@@ -72,5 +72,5 @@ The blanket finding is still required at the bug commit and forbidden after the 
 
 - **Recall:** the one known bug is caught, at the right commit, by a vocabulary written beforehand. The catch depends on one synonym a human had to add.
 - **Precision:** 34 of 120 vocabulary-B findings (28%) are plausible contradictions, worth a human look. Without the fixable vocabulary gaps, 34 of 76 (45%). Most of the remaining noise is contrast ("than", "instead of", "in lieu of").
-- **Size variants:** they repeat findings. Grouping identical texts in the PR summary (M3) would turn 34 findings into 7 items to review.
+- **Size variants:** they repeat findings. The PR summary groups identical texts, so 34 findings become 7 items to review.
 - **Not done:** none of the open candidates were reported upstream.

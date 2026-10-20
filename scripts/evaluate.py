@@ -1,13 +1,12 @@
-"""Evaluation E1: run Statsay on a fixture and every mutation, then score it.
+"""Run Statsay on a mutation fixture and every mutation, then score it.
 
 Usage:
-    python scripts/e1.py fixtures/toy-game
+    python scripts/evaluate.py fixtures/toy-game
 
 Each case runs twice: on the current revision alone, and in diff mode against
 the clean fixture. Findings marked diff_only are expected only in diff mode.
 Expected findings for rules not built yet count as out of scope. Exits 0 when
-Gate 1 holds:
-every planted in-scope bug is found and fails CI, and the clean fixture and
+every planted in-scope bug is found (errors fail CI), and the clean fixture and
 negative controls produce no unexpected findings.
 """
 
@@ -154,11 +153,11 @@ def main():
     print(f"\nUnexpected errors/warnings: {alerts} across {total_checked} bound strings checked "
           f"({rate:.1f} per 1,000)")
     if failures:
-        print("\nGate 1: NOT MET")
+        print("\nFAIL")
         for failure in failures:
             print(f"- {failure}")
         sys.exit(1)
-    print("\nGate 1: met (all planted in-scope bugs fail CI; no unexpected findings)")
+    print("\nPASS: every planted bug found, no unexpected findings")
 
 
 if __name__ == "__main__":

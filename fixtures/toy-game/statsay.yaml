@@ -1,5 +1,4 @@
-# Statsay configuration for the toy game, in the syntax proposed by the spec
-# ("Binding by convention"). The `localization` block is not in the spec yet.
+# Statsay configuration for the toy game.
 
 data_sources:
   - id: items

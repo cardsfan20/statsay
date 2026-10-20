@@ -2,7 +2,7 @@
 
 Does your text say what your stats say? Statsay is a CI check that finds localized game text contradicting the gameplay data it describes. For example, a description that still says "Restores 50 HP" in English and Japanese after `heal` changed to 40.
 
-Status: early development (M3 built; no pilot users yet). The design is in [Localization as Code — Spec Revision 3.md](Localization%20as%20Code%20—%20Spec%20Revision%203.md).
+Status: early development (v0.1). Feedback and issues are welcome at [github.com/cardsfan20/statsay](https://github.com/cardsfan20/statsay/issues).
 
 ## What it does
 
@@ -10,7 +10,7 @@ Status: early development (M3 built; no pilot users yet). The design is in [Loca
 - **Reads localization** from CSV files (`key,en,ja,…`) or from text stored in the data itself (RPG Maker's `description`).
 - **Binds** strings to entities by key convention (`item.{id}.description`) or explicitly, and reports coverage.
 - **Extracts claims per locale:**
-  - numbers, tied to fields with the spec's fixed confidence rule
+  - numbers, tied to fields by a fixed, testable confidence rule (nearest anchor word in the same clause)
   - vocabulary terms, tied to enum, flag or list fields
 
   Text is NFKC-normalized (`１５０` → 150) and engine control codes (`\C[2]`) are masked.
@@ -35,8 +35,8 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"   # on macOS/Linux: .venv/bin/python
 .venv/Scripts/statsay check fixtures/toy-game
 .venv/Scripts/python -m pytest
-.venv/Scripts/python scripts/e1.py fixtures/toy-game      # E1 metrics and Gate 1 verdict
-.venv/Scripts/python scripts/e1.py fixtures/rpgmaker-mz   # same, on an RPG Maker MZ database
+.venv/Scripts/python scripts/evaluate.py fixtures/toy-game      # precision/recall on planted bugs
+.venv/Scripts/python scripts/evaluate.py fixtures/rpgmaker-mz   # same, on an RPG Maker MZ database
 .venv/Scripts/python scripts/wesnoth_did.py check 83d4b397f1de466c721e4e393b361c71fc4f5b6c   # real bug: Wesnoth #8549
 .venv/Scripts/python scripts/cdda_materials.py check 5d320508149b28da05fc4d45e4a8f2d1c7547ef6  # real bug: CDDA #53277
 ```

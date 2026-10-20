@@ -1,6 +1,6 @@
 # Wesnoth: Descent into Darkness AMLAs
 
-A natural-bug reconstruction for E2: [Wesnoth #8549](https://github.com/wesnoth/wesnoth/issues/8549) (duplicate of [#7767](https://github.com/wesnoth/wesnoth/issues/7767)). Malin Keshar's "+1 shadow wave damage" AMLA granted +2. It shipped in stable release 1.16.11 and was fixed in the data by [PR #7770](https://github.com/wesnoth/wesnoth/pull/7770) (`increase_damage=2` → `1`).
+A real-bug reconstruction: [Wesnoth #8549](https://github.com/wesnoth/wesnoth/issues/8549) (duplicate of [#7767](https://github.com/wesnoth/wesnoth/issues/7767)). Malin Keshar's "+1 shadow wave damage" AMLA granted +2. It shipped in stable release 1.16.11 and was fixed in the data by [PR #7770](https://github.com/wesnoth/wesnoth/pull/7770) (`increase_damage=2` → `1`).
 
 Wesnoth is GPL-licensed, so no Wesnoth text is committed here. `scripts/wesnoth_did.py` downloads two files at a pinned commit and converts them:
 
@@ -37,9 +37,9 @@ The test `tests/test_wesnoth.py` runs both checks when `STATSAY_NETWORK=1` is se
 
 Of 60 strings at 1.16.11, 24 carry numbers tied to a field (26 high-confidence claims). Statsay flagged the 2 wrong strings and none of the other 22.
 
-## Transfer test with the real PO file (M3)
+## With the real PO file
 
-Since M3, `build` keeps Wesnoth's `ja.po` unchanged, and Statsay's `po` source joins it to the English text by msgid. The script's own PO parser is no longer in the path. Same results: both expected errors at 1.16.11, nothing after the fix. The Japanese suggested fix points into `ja.po` (line and column of `+1`).
+`build` keeps Wesnoth's `ja.po` unchanged, and Statsay's `po` source joins it to the English text by msgid. The script's own PO parser is no longer in the path. Same results: both expected errors at 1.16.11, nothing after the fix. The Japanese suggested fix points into `ja.po` (line and column of `+1`).
 
 `statsay flag` on that file is the write-back test. It inserted exactly two lines into the 6,665-line file and kept every other byte; a second run changed nothing:
 

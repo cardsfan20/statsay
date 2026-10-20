@@ -151,7 +151,7 @@ def build(ref, out_dir):
 
 def check(ref):
     sys.path.insert(0, str(ROOT / "scripts"))
-    import e1
+    import evaluate
     from statsay.config import load_config
     from statsay.engine import run
 
@@ -176,9 +176,9 @@ def check(ref):
             print(f"      \"{f.text[:150]}\"")
 
     for name in ("statsay.yaml", "statsay-v2.yaml"):
-        actual = {e1.identity(f.to_dict()) for f in results[name].findings}
+        actual = {evaluate.identity(f.to_dict()) for f in results[name].findings}
         for item in expected[name]["required"]:
-            if e1.identity(item) not in actual:
+            if evaluate.identity(item) not in actual:
                 print(f"MISSED     {name}: {item}")
                 failed = True
         for key in expected[name]["forbidden_keys"]:

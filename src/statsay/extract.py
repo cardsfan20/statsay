@@ -1,6 +1,6 @@
 """Find claims in a string: numbers tied to watched fields, and vocabulary terms.
 
-Number claims follow the spec's fixed extraction-confidence rule:
+Number claims follow a fixed, testable confidence rule:
 
 - High: an anchor term of exactly one field is nearest to the number, in the
   same clause, with no other number in between; or the string has exactly one

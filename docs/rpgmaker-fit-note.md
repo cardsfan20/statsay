@@ -14,17 +14,17 @@ Checked 2026-10-20 against the public database of [samuelcardillo/MMORPGMaker-MV
 
 ## What the real data showed
 
-- **Hand-written numbers are common in items.** 12 of 20 described items state a number. All 11 that Statsay can tie to a field match the data. This supports M1's numeric focus for RPG Maker games, at least for games built on the stock database.
+- **Hand-written numbers are common in items.** 12 of 20 described items state a number. All 11 that Statsay can tie to a field match the data. Number checks fit RPG Maker games well, at least games built on the stock database.
 - **Skills mostly state game-rule constants**, e.g. "Utilisable jusqu'à 2 fois à la suite" (buff stacking) and "pendant 5 tours". These aren't in the data, so they come out as `unbound_claim` info (25 in this database). Real stat claims in skills are rare.
 - **Three extractor problems found and fixed:**
   - A line break was treated as a clause break, which would cut a number off from its anchor on the next line. Line breaks now count as wrapping.
   - French writes "1 500" with a no-break space as the thousands separator; it was read as 1 and 500. No-break and thin spaces between digits now group digits.
-  - The spec's "one number, one numeric field" fallback tied "2 fois" to `mpCost` and produced 22 false errors. The fallback now applies only to fields with no anchors configured for the locale.
+  - The "one number, one numeric field" fallback tied "2 fois" to `mpCost` and produced 22 false errors. The fallback now applies only to fields with no anchors configured for the locale.
 - **After the fixes:** 0 errors, 0 warnings and 25 info on the whole database (159 bound strings).
 
 ## Translations (not verified)
 
-RPG Maker has no built-in localization. Translation plugins export database text to CSV or JSON (Sang Hendrix's Non-Destructive Localization, ToshA_Localization, opendigitalworld's Multi-Language System). Statsay reads such a CSV if its keys follow a pattern like `item.{id}.description`. Each plugin's actual key scheme still needs checking; that is pilot work for M3.
+RPG Maker has no built-in localization. Translation plugins export database text to CSV or JSON (Sang Hendrix's Non-Destructive Localization, ToshA_Localization, opendigitalworld's Multi-Language System). Statsay reads such a CSV if its keys follow a pattern like `item.{id}.description`. Each plugin's actual key scheme still needs checking against real projects.
 
 ## Fit
 
